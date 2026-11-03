@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { close, dilate, dropSmall, erode, frontWindows, mainWindows, windowGroups } from "../src/pipeline/region.ts";
 import { changedOutside } from "../src/pipeline/tryon.ts";
-import { windowMatch, windowOutline } from "../src/pipeline/align.ts";
+import { warpByColumns, windowMatch, windowOutline } from "../src/pipeline/align.ts";
 import { composite } from "../src/pipeline/composite.ts";
 
 const W = 20, H = 10;
@@ -107,4 +107,15 @@ test("the leaves of a door group into one opening, a window across the room stay
   const groups = windowGroups([seg(100, 200, 180, 600), seg(190, 220, 270, 620), seg(600, 200, 700, 400)]);
   assert.equal(groups.length, 2);
   assert.deepEqual(groups[0], { x1: 100, y1: 200, x2: 270, y2: 620 });
+});
+
+test("the column warp follows each window's own shift and blends between them", () => {
+  const w = 40, h = 4;
+  const img = Buffer.alloc(w * h * 3);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) img[(y * w + x) * 3] = x * 5;
+  const al = (dx: number) => ({ scale: 1, dx, dy: 0, residual: 0, before: 0 });
+  const out = warpByColumns(img, w, h, [{ x: 5, al: al(2) }, { x: 35, al: al(-2) }]);
+  assert.equal(out[(0 * w + 5) * 3], (5 - 2) * 5);
+  assert.equal(out[(0 * w + 35) * 3], (35 + 2) * 5);
+  assert.equal(out[(0 * w + 20) * 3], 20 * 5);
 });

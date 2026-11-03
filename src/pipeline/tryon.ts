@@ -17,7 +17,7 @@ import {
   type SceneFacts,
   type Verdict,
 } from "../meta/vision.ts";
-import { applyAlignment, findAlignment, matchTone, windowMatch, windowOutline, type Alignment } from "./align.ts";
+import { applyAlignment, findAlignment, matchTone, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, rgbToLab, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
@@ -248,7 +248,25 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     const rawResized = await toSize(generated, room.width, room.height);
     const resized = matchTone(room.rgb, rawResized, region);
     const alignment = await findAlignment(room.rgb, resized, room.width, room.height, windowFrame);
-    const aligned = matchTone(room.rgb, await applyAlignment(resized, room.width, room.height, alignment), region);
+    // With several windows each is also aligned on its own frame, searching near the overall alignment; where that
+    // fits clearly better, the picture bends to it (warpByColumns), so curtains land on their own windows.
+    let placed: Buffer;
+    if (windows.length >= 2) {
+      const anchors: { x: number; al: Alignment }[] = [];
+      let local = 0;
+      for (const w of windows) {
+        const frame = dilate(w.mask, room.width, room.height, Math.round(room.width * 0.03));
+        const own = await findAlignment(room.rgb, resized, room.width, room.height, frame, alignment);
+        const better = Number.isFinite(own.residual) && own.residual < own.before * 0.85;
+        if (better) local++;
+        anchors.push({ x: (w.box.x1 + w.box.x2) / 2, al: better ? own : alignment });
+      }
+      alignment.localWindows = local;
+      placed = local ? warpByColumns(resized, room.width, room.height, anchors) : await applyAlignment(resized, room.width, room.height, alignment);
+    } else {
+      placed = await applyAlignment(resized, room.width, room.height, alignment);
+    }
+    const aligned = matchTone(room.rgb, placed, region);
     const alignedJpeg = await rgbToJpeg(aligned, room.width, room.height);
     report.debug[`generated-${n}`] = alignedJpeg;
     const attempt: AttemptReport = {

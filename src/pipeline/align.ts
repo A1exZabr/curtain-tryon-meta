@@ -9,6 +9,8 @@ export interface Alignment {
   residual: number;
   /** Same measure before alignment, for the report. */
   before: number;
+  /** How many windows got their own alignment because the overall one left them off (see warpByColumns). */
+  localWindows?: number;
 }
 
 /**
@@ -39,9 +41,11 @@ export async function findAlignment(
   width: number,
   height: number,
   compare: Mask,
+  /** Search near this alignment instead of from scratch; `before` is then the cost at it, on the same pixels. */
+  around?: Alignment,
 ): Promise<Alignment> {
   const levels = [256, 512];
-  let best = { scale: 1, dx: 0, dy: 0, cost: Infinity };
+  let best = { scale: around?.scale ?? 1, dx: around?.dx ?? 0, dy: around?.dy ?? 0, cost: Infinity };
   let before = 0;
   for (const [level, tw] of levels.entries()) {
     const th = Math.round((tw * height) / width);
@@ -68,10 +72,16 @@ export async function findAlignment(
       }
       return n > tw * th * 0.01 ? sum / n : Infinity;
     };
-    if (level === 0) before = cost(1, 0, 0);
-    const span = level === 0 ? { s: [0.94, 1.06, 0.01], d: Math.round(width * 0.04) } : { s: [best.scale - 0.008, best.scale + 0.008, 0.002], d: Math.round(2 / k) };
+    if (level === 0 && !around) before = cost(1, 0, 0);
+    if (level === levels.length - 1 && around) before = cost(around.scale, around.dx, around.dy);
+    const span =
+      level === 0
+        ? around
+          ? { s: [around.scale - 0.03, around.scale + 0.03, 0.01], d: Math.round(width * 0.02) }
+          : { s: [0.94, 1.06, 0.01], d: Math.round(width * 0.04) }
+        : { s: [best.scale - 0.008, best.scale + 0.008, 0.002], d: Math.round(2 / k) };
     const stepD = Math.max(1, Math.round(1 / k));
-    const centre = level === 0 ? { dx: 0, dy: 0 } : { dx: best.dx, dy: best.dy };
+    const centre = level === 0 ? { dx: around?.dx ?? 0, dy: around?.dy ?? 0 } : { dx: best.dx, dy: best.dy };
     for (let scale = span.s[0]!; scale <= span.s[1]! + 1e-9; scale += span.s[2]!) {
       for (let dy = centre.dy - span.d; dy <= centre.dy + span.d; dy += stepD) {
         for (let dx = centre.dx - span.d; dx <= centre.dx + span.d; dx += stepD) {
@@ -107,6 +117,39 @@ export function matchTone(original: Buffer, generated: Buffer, keepOut: Mask): B
     for (let i = 0; i < pixels; i++) {
       const v = gain * generated[i * 3 + c]! + offset;
       out[i * 3 + c] = v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
+    }
+  }
+  return out;
+}
+
+/**
+ * Lays the result over the original with an alignment that changes along the width: each anchor is a window's own
+ * alignment at its centre, and columns between two anchors take a blend of the two, so the picture bends smoothly
+ * with no seam (a drape between two windows would show one). The generator does not shift a wide frame evenly: one
+ * wall can move left while the other moves right.
+ */
+export function warpByColumns(result: Buffer, width: number, height: number, anchors: { x: number; al: Alignment }[]): Buffer {
+  const sorted = [...anchors].sort((a, b) => a.x - b.x);
+  const out = Buffer.alloc(width * height * 3);
+  const cx = width / 2;
+  const cy = height / 2;
+  for (let x = 0; x < width; x++) {
+    let al: { scale: number; dx: number; dy: number };
+    const right = sorted.findIndex((a) => a.x >= x);
+    if (right <= 0) al = sorted[right === 0 ? 0 : sorted.length - 1]!.al;
+    else {
+      const a = sorted[right - 1]!, b = sorted[right]!;
+      const t = (x - a.x) / Math.max(1, b.x - a.x);
+      al = { scale: a.al.scale + (b.al.scale - a.al.scale) * t, dx: a.al.dx + (b.al.dx - a.al.dx) * t, dy: a.al.dy + (b.al.dy - a.al.dy) * t };
+    }
+    const sx = Math.min(width - 1, Math.max(0, Math.round(cx + (x - cx - al.dx) / al.scale)));
+    for (let y = 0; y < height; y++) {
+      const sy = Math.min(height - 1, Math.max(0, Math.round(cy + (y - cy - al.dy) / al.scale)));
+      const s = (sy * width + sx) * 3;
+      const d = (y * width + x) * 3;
+      out[d] = result[s]!;
+      out[d + 1] = result[s + 1]!;
+      out[d + 2] = result[s + 2]!;
     }
   }
   return out;

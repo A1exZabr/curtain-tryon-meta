@@ -48,7 +48,10 @@ export interface TryOnRequest {
   relight?: boolean;
   /** Tell a second attempt what went wrong with the first. */
   retryFixes?: boolean;
-  /** Show the generator's whole picture when it kept the room (default on); otherwise paste the curtains. */
+  /**
+   * Show the generator's whole picture, accepted only when it kept the room (default). Off: paste its curtains into
+   * the photo instead, the earlier way, kept for the comparison in eval/RESULTS.md.
+   */
   whole?: boolean;
   /** Development only: reuse a generated image instead of paying for a new one. */
   reuseGenerated?: Buffer;
@@ -220,7 +223,8 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     references.push(jpegDataUrl(jpeg));
     lightIndex = references.length;
   }
-  const maxAttempts = req.maxAttempts ?? 2;
+  // A generation that changed the room is thrown away and made again, so there is one attempt more than before.
+  const maxAttempts = req.maxAttempts ?? 3;
 
   for (let n = 1; n <= maxAttempts; n++) {
     // A second attempt isn't a plain repeat: the prompt gets told what went wrong with the first one.
@@ -370,7 +374,11 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // be there, within a few pixels.
     const glass = erode(windowMask, room.width, room.height, Math.round(room.width * 0.012));
     attempt.geometry.edgesKept = +(await edgeKept(room.rgb, aligned, room.width, room.height, union([newMask, rodMask, oldMask, glass], size))).toFixed(3);
-    if ((req.whole ?? true) && attempt.geometry.roomDiff <= LIMITS.maxRoomDiff && attempt.geometry.edgesKept >= LIMITS.minEdgesKept) {
+    if ((req.whole ?? true) && (attempt.geometry.roomDiff > LIMITS.maxRoomDiff || attempt.geometry.edgesKept < LIMITS.minEdgesKept)) {
+      attempt.why = `the generator changed the room (${Math.round(attempt.geometry.edgesKept * 100)}% of the photo's edges kept, difference ${attempt.geometry.roomDiff})`;
+      continue;
+    }
+    if (req.whole ?? true) {
       const locked = Buffer.from(aligned);
       attempt.colour = lockFabricColour(locked, drapes, fabricColour);
       const whole = await composite(aligned, locked, dilate(drapes, room.width, room.height, grow * 3), room.width, room.height, grow * 6);
@@ -388,10 +396,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
         return finish();
       }
       attempt.why = `result check: ${attempt.verdict.defects.join(", ") || "low score"} (${attempt.verdict.notes})`;
-      // Curtains that are wrong in the generator's picture are wrong pasted too; only a room it changed is worth
-      // pasting around.
-      const roomOnly = ["ROOM_CHANGED", "FURNITURE_CORRUPTED", "WRONG_WINDOW", "HALLUCINATED_EXTERIOR"];
-      if (!attempt.verdict.defects.length || attempt.verdict.defects.some((d) => !roomOnly.includes(d))) continue;
+      continue;
     }
 
     // Paste: pull the curtains' colour back to the fabric's, then paste the new curtains and rod, and wherever the
@@ -412,20 +417,8 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // The margin is kept to a few pixels: anything wider pastes the generator's own background around the curtains,
     // lighter and softer than the photo's, and shows as a halo, worst under the hems where the merging also fills
     // the gaps between folds.
-    // SAM often misses a thin rod or the rings, and a drape pasted without them hangs from nothing. Over each drape's
-    // top, the pixels the generator changed (the rod, rings, a track) come along.
-    const rodBand = new Uint8Array(size);
-    for (const b of pieceBoxes(drapes, room.width, room.height, Math.round(size * 0.002))) {
-      const y1 = Math.max(0, b.y1 - Math.round(room.height * 0.03)), y2 = Math.min(room.height - 1, b.y1 + Math.round(room.height * 0.01));
-      const x1 = Math.max(0, b.x1 - Math.round(room.width * 0.02)), x2 = Math.min(room.width - 1, b.x2 + Math.round(room.width * 0.02));
-      for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) {
-        const i = y * room.width + x, j = i * 3;
-        const d = Math.abs(room.rgb[j]! - aligned[j]!) + Math.abs(room.rgb[j + 1]! - aligned[j + 1]!) + Math.abs(room.rgb[j + 2]! - aligned[j + 2]!);
-        if (d > 60 && region[i]) rodBand[i] = 1;
-      }
-    }
     const solid = close(
-      dropSmall(union([drapes, rodMask, replaced, rodBand], size), room.width, room.height, Math.round(size * 0.002)),
+      dropSmall(union([drapes, rodMask, replaced], size), room.width, room.height, Math.round(size * 0.002)),
       room.width,
       room.height,
       Math.round(room.width * 0.005),
@@ -632,6 +625,9 @@ export function refinements(attempt: AttemptReport, scene: SceneFacts): string[]
   const out = new Set<string>();
   const defects = new Set(attempt.verdict?.defects ?? []);
   const g = attempt.geometry;
+  if ((g.edgesKept !== undefined && g.edgesKept < LIMITS.minEdgesKept) || (g.roomDiff !== undefined && g.roomDiff > LIMITS.maxRoomDiff)) {
+    out.add("The first try changed the room: keep every object, lamp and piece of furniture where it is, the camera, the framing and the zoom exactly as in image 1, and add only the curtains.");
+  }
   if (g.windowDiff > LIMITS.maxWindowDiff) {
     out.add("Keep the camera, the framing and the window exactly as in image 1: don't zoom, crop or shift the picture, and don't redraw the window.");
   }

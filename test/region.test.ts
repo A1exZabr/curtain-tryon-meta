@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { close, dilate, dropSmall, erode, mainWindows } from "../src/pipeline/region.ts";
+import { close, dilate, dropSmall, erode, frontWindows, mainWindows } from "../src/pipeline/region.ts";
 import { changedOutside } from "../src/pipeline/tryon.ts";
 import { windowMatch, windowOutline } from "../src/pipeline/align.ts";
 import { composite } from "../src/pipeline/composite.ts";
@@ -94,4 +94,10 @@ test("the window check reads the mask where it is, also low in a tall photo", as
   const m = new Uint8Array(w * h);
   for (let y = 450; y < 560; y++) for (let x = 50; x < 250; x++) { m[y * w + x] = 1; for (let c = 0; c < 3; c++) b[(y * w + x) * 3 + c] = 200; }
   assert.ok((await windowMatch(a, b, w, h, m)) > 80);
+});
+
+test("windows seen through a balcony door are dropped, the door stays", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ box: { x1, y1, x2, y2 }, mask: new Uint8Array(0), area: (x2 - x1) * (y2 - y1) });
+  const door = seg(300, 300, 700, 1000), behind = seg(350, 400, 650, 700), side = seg(800, 300, 1000, 700);
+  assert.deepEqual(frontWindows([behind, door, side]), [door, side]);
 });

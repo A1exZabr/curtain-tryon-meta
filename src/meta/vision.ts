@@ -144,12 +144,13 @@ export function verdictPrompt(scene: Pick<SceneFacts, "fabric_description" | "fa
     "Answer with JSON only, no other text:",
     "{",
     '  "same_room": true if the result is clearly the same room from the same viewpoint,',
-    '  "curtains_on_window": true if new curtains hang on the window (not floating, not on a wall without a window),',
+    '  "curtains_on_window": true if new curtains hang at the window from a visible rod or track (not floating, not on a wall without a window),',
     '  "fabric_matches": true if the curtains have the fabric\'s colour and character: its hue, whether it is plain or patterned,',
     "     sheer or opaque, matte or shiny. Judge the fabric itself, not its fine weave and not the background of the swatch photo.",
     "     Curtains hanging against a bright window are naturally somewhat darker than a swatch in daylight, so don't judge exact brightness,",
     '  "realistic": true if the curtains look like a real photo: plausible folds, no smears, no seams at their edges,',
-    '  "defects": a list using only these codes: WRONG_FABRIC, WRONG_WINDOW, CURTAINS_MISSING, ROOM_CHANGED, ARTIFACTS, CUT_EDGE,' +
+    '  "defects": a list using only these codes: WRONG_FABRIC, WRONG_WINDOW, CURTAINS_MISSING, ROOM_CHANGED, ARTIFACTS,' +
+      " CUT_EDGE (a ragged, crooked or cut-off edge, the top included), NO_ROD (the curtains hang from nothing: no rod, track or ceiling holds them)," +
       (scene.exterior_visible ? "" : " HALLUCINATED_EXTERIOR (the window was covered in the original and the result shows a view outside),"),
     '  "score": overall quality from 0 to 1,',
     '  "notes": one short sentence',
@@ -158,7 +159,7 @@ export function verdictPrompt(scene: Pick<SceneFacts, "fabric_description" | "fa
 }
 
 /** Defects that fail a result whatever the score says. */
-export const CRITICAL_DEFECTS = ["WRONG_FABRIC", "WRONG_WINDOW", "CURTAINS_MISSING", "ROOM_CHANGED", "HALLUCINATED_EXTERIOR"];
+export const CRITICAL_DEFECTS = ["WRONG_FABRIC", "WRONG_WINDOW", "CURTAINS_MISSING", "ROOM_CHANGED", "HALLUCINATED_EXTERIOR", "NO_ROD"];
 
 /** One place decides accept or reject; the model's own opinion is only an input. */
 export function verdictPasses(v: Verdict): boolean {

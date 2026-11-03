@@ -44,14 +44,14 @@ export const STYLES: CurtainStyle[] = [
   },
   {
     id: "ceiling-track",
-    name: "Pleats on a hidden ceiling track",
-    cut: "drapes in dense, even pinch pleats on a track hidden at the ceiling line, hanging from the ceiling to the floor with no visible rod",
+    name: "Pleats on a ceiling track",
+    cut: "drapes in dense, even pinch pleats hanging from a slim white track fixed to the ceiling, the tops of the drapes meeting the track in one straight line, from the ceiling to the floor",
     suits: "modern rooms, wide or floor-to-ceiling windows and low ceilings, since it makes the room look taller",
   },
   {
     id: "wave",
     name: "Wave heading on a ceiling track",
-    cut: "drapes on a slim ceiling track forming soft, identical S-shaped waves from the ceiling to the floor",
+    cut: "drapes forming soft, identical S-shaped waves, hanging from a slim white track fixed to the ceiling, from the ceiling to the floor",
     suits: "contemporary rooms and rows of windows; light and heavy fabrics alike",
   },
   {

@@ -95,6 +95,29 @@ async function runNext(): Promise<void> {
     });
     job.result = present(report);
     job.status = "done";
+    // One line per try-on, numbers only: the photos are never written anywhere.
+    console.log(
+      JSON.stringify({
+        job: job.id.slice(0, 8),
+        status: report.status,
+        reason: report.reason,
+        windows: report.scene?.window_count,
+        cover: report.scene?.window_cover,
+        style: report.design?.style,
+        attempts: report.attempts.map((a) => ({
+          windowDiff: a.geometry.windowDiff,
+          inside: +a.geometry.curtainsInsideRegion.toFixed(2),
+          coverage: +a.geometry.curtainCoverage.toFixed(2),
+          deltaE: a.colour ? +a.colour.deltaE.toFixed(1) : undefined,
+          light: a.light ? [+a.light.minGain.toFixed(2), +a.light.maxGain.toFixed(2)] : undefined,
+          score: a.verdict?.score,
+          defects: a.verdict?.defects,
+          why: a.why,
+        })),
+        usd: +report.totalUsd.toFixed(4),
+        s: Math.round(report.ms / 1000),
+      }),
+    );
   } catch (error) {
     job.status = "error";
     job.error =

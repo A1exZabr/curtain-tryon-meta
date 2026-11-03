@@ -66,7 +66,7 @@ test("refusals use the fixed sentence for the first known problem", () => {
 
 test("a catalogue style puts its cut in the prompt and forbids a new sheer", () => {
   const prompt = editPrompt(scene, { windowCount: 2, hasOldCurtains: false, style: STYLES.find((st) => st.id === "wave")! });
-  assert.match(prompt, /on each window in image 1, in this style: drapes on a slim ceiling track/);
+  assert.match(prompt, /on each window in image 1, in this style: drapes forming soft, identical S-shaped waves/);
   assert.match(prompt, /no sheer or tulle that isn't on the window now/);
   assert.doesNotMatch(prompt, /one panel on each side/);
 });

@@ -226,12 +226,14 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
 
     step("check", n);
     const alignedPhoto = { dataUrl: jpegDataUrl(alignedJpeg), width: room.width, height: room.height };
-    const [newCurtains, rods] = await Promise.all([
+    // A rod over the window and a track on the ceiling are different things to SAM; both are pasted with the curtains.
+    const [newCurtains, rods, tracks] = await Promise.all([
       segment(alignedPhoto, "curtains", costs),
       segment(alignedPhoto, "curtain rod", costs),
+      segment(alignedPhoto, "curtain track", costs),
     ]);
     const newMask = union(newCurtains.map((c) => c.mask), size);
-    const rodMask = union(rods.map((r) => r.mask), size);
+    const rodMask = union([...rods, ...tracks].map((r) => r.mask), size);
     const newArea = area(newMask);
     attempt.geometry = {
       windowDiff: await windowMatch(room.rgb, aligned, room.width, room.height, windowOutline(windowMask, union([newMask, rodMask, oldMask], size), room.width, room.height)),
@@ -308,12 +310,15 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
 
 /**
  * Windows and glass doors are looked for together: through a balcony door SAM's "window" finds the balcony's
- * windows behind it, and the curtains belong around the door. "large window" catches floor-to-ceiling glass that
- * neither phrase finds.
+ * windows behind it, and the curtains belong around the door (mainWindows drops what lies inside it). "large
+ * window" catches floor-to-ceiling glass that none of these phrases finds.
  */
 async function findWindows(room: Photo, costs: CostLog): Promise<Segment[]> {
-  const [windows, doors] = await Promise.all([segment(room, "window", costs), segment(room, "glass door", costs)]);
-  const found = mainWindows([...windows, ...doors], room.width, room.height);
+  const found = mainWindows(
+    (await Promise.all(["window", "glass door", "balcony door"].map((phrase) => segment(room, phrase, costs)))).flat(),
+    room.width,
+    room.height,
+  );
   if (found.length) return found;
   return mainWindows(await segment(room, "large window", costs), room.width, room.height);
 }
@@ -369,6 +374,7 @@ export function editPrompt(scene: SceneFacts, o: PromptOptions): string {
         "but not its fabric, its colour, its white sheer, its window or its room."
       : "",
     o.style || o.clientStyle ? "Add only the rod or track this style needs, and no sheer or tulle that isn't on the window now." : "",
+    "The curtains always hang from something you can see, a rod or a track, and their tops meet it in a straight, even line.",
     OPACITY[scene.fabric_opacity],
     ...coverRules(scene, o.hasOldCurtains),
     "Match the fabric's colour, pattern and texture exactly; keep its lightness and do not make it darker or more saturated.",
@@ -442,6 +448,7 @@ export function refinements(attempt: AttemptReport, scene: SceneFacts): string[]
   }
   if (defects.has("ROOM_CHANGED")) out.add("Keep every piece of furniture, every wall and the floor exactly as they were.");
   if (defects.has("HALLUCINATED_EXTERIOR")) out.add("Do not open the window or show a view outside where it was covered.");
+  if (defects.has("NO_ROD")) out.add("The curtains hung from nothing: hang them from a visible rod or a track fixed to the ceiling, their tops meeting it in a straight line.");
   return [...out];
 }
 

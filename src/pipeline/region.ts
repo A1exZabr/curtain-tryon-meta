@@ -9,13 +9,35 @@ export type Mask = Uint8Array; // width * height, 0 or 1
  */
 export function mainWindows(windows: Segment[], width: number, height: number): Segment[] {
   const largest = Math.max(0, ...windows.map((w) => w.area));
-  return windows.filter((w) => w.area >= largest * 0.04 && w.area >= width * height * 0.005);
+  return frontWindows(windows.filter((w) => w.area >= largest * 0.04 && w.area >= width * height * 0.005));
 }
 
 /**
- * Where curtains are allowed to be: for each window, from a little above the frame (where a rod hangs) down to
- * the bottom of the photo, and 60% of the window's width out to each side (rods usually run wider than the
- * frame). Existing curtains are added too, since they have to be replaced wherever they hang.
+ * Drops a window that lies almost wholly inside a larger window's or door's outline: it is either seen through
+ * it (the balcony's windows behind a balcony door) or one of its own panes. The curtains belong to the front one.
+ */
+export function frontWindows(windows: Segment[]): Segment[] {
+  const boxArea = (b: Segment["box"]) => Math.max(0, b.x2 - b.x1) * Math.max(0, b.y2 - b.y1);
+  return windows.filter((w) => {
+    const own = boxArea(w.box);
+    return !windows.some((o) => {
+      if (o === w || boxArea(o.box) <= own) return false;
+      const inside = boxArea({
+        x1: Math.max(w.box.x1, o.box.x1),
+        y1: Math.max(w.box.y1, o.box.y1),
+        x2: Math.min(w.box.x2, o.box.x2),
+        y2: Math.min(w.box.y2, o.box.y2),
+      });
+      return own > 0 && inside / own >= 0.8;
+    });
+  });
+}
+
+/**
+ * Where curtains are allowed to be: for each window, from the top of the photo (rods and ceiling tracks often sit
+ * at the ceiling, well above the frame) down to the bottom, and 60% of the window's width out to each side (rods
+ * usually run wider than the frame). Existing curtains are added too, since they have to be replaced wherever
+ * they hang.
  */
 export function allowedRegion(
   windows: Segment[],
@@ -26,11 +48,9 @@ export function allowedRegion(
   const region = new Uint8Array(width * height);
   for (const w of windows) {
     const ww = w.box.x2 - w.box.x1;
-    const wh = w.box.y2 - w.box.y1;
     const left = Math.max(0, Math.floor(w.box.x1 - ww * 0.6));
     const right = Math.min(width, Math.ceil(w.box.x2 + ww * 0.6));
-    const top = Math.max(0, Math.floor(w.box.y1 - Math.max(wh * 0.15, height * 0.04)));
-    for (let y = top; y < height; y++) region.fill(1, y * width + left, y * width + right);
+    for (let y = 0; y < height; y++) region.fill(1, y * width + left, y * width + right);
   }
   for (const c of oldCurtains) or(region, dilate(c.mask, width, height, Math.round(width * 0.01)));
   return region;

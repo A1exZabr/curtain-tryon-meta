@@ -55,7 +55,7 @@ export type Step = "read" | "generate" | "align" | "check" | "done";
 
 export interface AttemptReport {
   alignment: Alignment;
-  geometry: { windowDiff: number; curtainsInsideRegion: number; curtainCoverage: number };
+  geometry: { windowDiff: number; curtainsInsideRegion: number; curtainCoverage: number; tulleKept?: number };
   /** Share of the room outside the pasted curtains that the raw generator output changed visibly; ours is 0. */
   rawChangedOutside?: number;
   colour?: ColourLock;
@@ -94,6 +94,7 @@ export const LIMITS = {
   maxWindowDiff: 40, // 40th percentile of grey difference along the window's outline after alignment (0..255); above it the window moved
   minInside: 0.8, // share of the new curtains that must lie inside the allowed region
   minCoverage: 0.12, // new curtain area relative to the window area; below it the curtains are missing
+  minTulleKept: 0.5, // share of the original tulle still found on the result when the tulle should stay
 };
 
 export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
@@ -117,7 +118,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   report.before = room.jpeg;
 
   // Read the scene and segment the room at the same time: none of these depend on each other.
-  const [scene, windowsAll, oldCurtains, oldTulle] = await Promise.all([
+  const [scene, windowsAll, oldCurtains, oldTulle, inFront] = await Promise.all([
     askJson(
       checker,
       "scene check",
@@ -132,6 +133,8 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     findWindows(room, costs),
     segment(room, "curtains", costs),
     segment(room, "sheer white tulle", costs),
+    // Furniture and lamps stand in front of the window wall: a curtain drawn over them is pasted around them.
+    Promise.all(["furniture", "lamp", "chandelier"].map((phrase) => segment(room, phrase, costs))).then((r) => r.flat()),
   ]);
   report.scene = scene;
 
@@ -159,6 +162,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   const tulleOriginal = keepsTulle ? dilate(union(oldTulle.map((t) => t.mask), size), room.width, room.height, Math.round(room.width * 0.004)) : undefined;
   const oldDrapes = tulleOriginal ? oldMask.map((v, i) => (v && !tulleOriginal[i] ? 1 : 0)) : oldMask;
   const replaced = scene.window_cover === "sheer" ? oldDrapes : oldMask;
+  const keepOut = union(inFront.map((o) => o.mask), size);
   const region = allowedRegion(windows, oldCurtains, room.width, room.height);
   // The window with its frame: what alignment compares.
   const windowFrame = dilate(windowMask, room.width, room.height, Math.round(room.width * 0.03));
@@ -287,7 +291,14 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     ]);
     const newMask = union(newCurtains.map((c) => c.mask), size);
     const tulleMask = union(tulle.map((t) => t.mask), size);
-    const drapes = tulle.length ? newMask.map((v, i) => (v && !tulleMask[i] ? 1 : 0)) : newMask;
+    // SAM gives each drape and the tulle as separate pieces. A piece lying mostly inside the tulle mask is the tulle;
+    // the drapes stay whole even where the tulle mask spills over them.
+    const drapePieces = newCurtains.filter((c) => area(and(c.mask, tulleMask)) / Math.max(1, c.area) < 0.6);
+    const drapes = !tulle.length
+      ? newMask
+      : drapePieces.length
+        ? union(drapePieces.map((c) => c.mask), size)
+        : newMask.map((v, i) => (v && !tulleMask[i] ? 1 : 0));
     const rodMask = union([...rods, ...tracks].map((r) => r.mask), size);
     const newArea = area(newMask);
     attempt.geometry = {
@@ -298,6 +309,15 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     if (attempt.geometry.windowDiff > LIMITS.maxWindowDiff) {
       attempt.why = `the window moved or was redrawn (difference ${attempt.geometry.windowDiff} of 255)`;
       continue;
+    }
+    // A tulle the client has stays where it hangs: a generator told to keep it sometimes takes it down and invents
+    // the view behind it.
+    if (tulleOriginal && area(tulleOriginal) > 0) {
+      attempt.geometry.tulleKept = area(and(tulleOriginal, dilate(tulleMask, room.width, room.height, Math.round(room.width * 0.01)))) / area(tulleOriginal);
+      if (attempt.geometry.tulleKept < LIMITS.minTulleKept) {
+        attempt.why = `the tulle on the window was taken down (${(attempt.geometry.tulleKept * 100).toFixed(0)}% left)`;
+        continue;
+      }
     }
 
     // Pull the curtains' colour back to the fabric's, then paste the new curtains and rod, and wherever the old
@@ -323,7 +343,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     );
     // Grown by the whole feather width, so the soft edge falls just outside the curtain and the curtain's own edge
     // is fully opaque (a half-transparent edge shows the old background through it).
-    const paste = and(dilate(solid, room.width, room.height, grow * 2), region);
+    const paste = and(dilate(solid, room.width, room.height, grow * 2), region).map((v, i) => (v && !keepOut[i] ? 1 : 0));
     const final = await composite(room.rgb, aligned, paste, room.width, room.height, grow * 2);
     attempt.rawChangedOutside = changedOutside(room.rgb, rawResized, dilate(paste, room.width, room.height, grow * 2));
     const finalJpeg = await rgbToJpeg(final, room.width, room.height);
@@ -505,6 +525,9 @@ export function refinements(attempt: AttemptReport, scene: SceneFacts): string[]
   }
   if (defects.has("ROOM_CHANGED")) out.add("Keep every piece of furniture, every wall and the floor exactly as they were.");
   if (defects.has("HALLUCINATED_EXTERIOR")) out.add("Do not open the window or show a view outside where it was covered.");
+  if (g.tulleKept !== undefined && g.tulleKept < LIMITS.minTulleKept) {
+    out.add("The white tulle on the window was taken down: keep it hanging exactly where it is in image 1, across the window, with the new drapes in front of it at the sides.");
+  }
   if (defects.has("NO_ROD")) out.add("The curtains hung from nothing: hang them from a visible rod or a track fixed to the ceiling, their tops meeting it in a straight line.");
   return [...out];
 }

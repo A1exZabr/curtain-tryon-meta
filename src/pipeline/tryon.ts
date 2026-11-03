@@ -20,7 +20,7 @@ import { applyAlignment, findAlignment, matchTone, windowMatch, windowOutline, t
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
-import { STYLES, styleById, styleSample, type CurtainStyle } from "./styles.ts";
+import { estimateFabric, STYLES, styleById, styleSample, type CurtainStyle, type FabricEstimate } from "./styles.ts";
 import { jpegDataUrl, loadPhoto, rgbToJpeg, toSize, type Photo } from "./images.ts";
 import { allowedRegion, and, area, close, dilate, dropSmall, mainWindows, union, type Mask } from "./region.ts";
 
@@ -74,7 +74,9 @@ export interface TryOnReport {
   clientMessage?: string;
   scene?: SceneFacts;
   /** The style the designer step chose, with its reason for the client. */
-  design?: { style: string; name: string; reason: string; sample: boolean };
+  design?: { style: string; name: string; reason: string; sample: boolean; fromClientPhoto: boolean };
+  /** How much fabric the curtains would take, from the openings measured on the photo. */
+  estimate?: FabricEstimate;
   attempts: AttemptReport[];
   /** The room photo at working size (JPEG), the "before" for a comparison slider. */
   before?: Buffer;
@@ -160,29 +162,35 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   const fabricColour = fabricLab(fabric.rgb, fabric.width, fabric.height);
   const references = [room.dataUrl, fabric.dataUrl, ...(style ? [style.dataUrl] : [])];
 
-  // The designer step: with no style photo from the client, Muse Spark Open picks a style from the catalogue for
-  // this room and this fabric, and the style's cut goes into the prompt.
+  // The designer step: Muse Spark Open picks a style from the catalogue for this room and this fabric (or names the
+  // one closest to the client's own style photo), and measures the openings for a first fabric estimate. A
+  // catalogue style's cut goes into the prompt only when the client sent no style photo.
   let chosen: CurtainStyle | undefined;
   let sampleIndex: number | undefined;
-  if (!style && (req.design ?? true)) {
+  if (req.design ?? true) {
     const design = await askJson(
       checker,
       "style choice",
-      designPrompt(STYLES, scene, req.wish),
+      designPrompt(STYLES, scene, req.wish, Boolean(style)),
       [
         { caption: "Room photo:", dataUrl: room.dataUrl },
         { caption: "Fabric photo:", dataUrl: fabric.dataUrl },
+        ...(style ? [{ caption: "Curtains the client wants:", dataUrl: style.dataUrl }] : []),
       ],
       designSchema,
       costs,
     );
-    chosen = styleById(design.style.trim()) ?? styleById("straight")!;
-    const sample = req.styleSamples ? styleSample(chosen.id) : undefined;
-    if (sample) {
-      references.push((await loadPhoto(sample, 1024)).dataUrl);
-      sampleIndex = references.length;
+    const picked = styleById(design.style.trim()) ?? styleById("straight")!;
+    report.estimate = estimateFabric(picked, design.openings, design.ceiling_cm);
+    if (!style) {
+      chosen = picked;
+      const sample = req.styleSamples ? styleSample(chosen.id) : undefined;
+      if (sample) {
+        references.push((await loadPhoto(sample, 1024)).dataUrl);
+        sampleIndex = references.length;
+      }
     }
-    report.design = { style: chosen.id, name: chosen.name, reason: design.reason, sample: Boolean(sample) };
+    report.design = { style: picked.id, name: picked.name, reason: design.reason, sample: sampleIndex !== undefined, fromClientPhoto: Boolean(style) };
   }
   let lightIndex: number | undefined;
   if (req.lightHint ?? true) {

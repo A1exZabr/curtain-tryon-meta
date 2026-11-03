@@ -270,7 +270,20 @@ function showResult(r) {
   }
   const design = $("#design");
   design.hidden = !r.design;
-  if (r.design) design.innerHTML = `<b>${escapeHtml(r.design.name)}.</b> ${escapeHtml(r.design.reason)}`;
+  if (r.design) {
+    design.innerHTML = r.design.fromClientPhoto
+      ? `<b>Your style photo.</b> Closest in our catalogue: ${escapeHtml(r.design.name.toLowerCase())}.`
+      : `<b>${escapeHtml(r.design.name)}.</b> ${escapeHtml(r.design.reason)}`;
+  }
+  const estimate = $("#estimate");
+  const e = r.estimate;
+  estimate.hidden = !e;
+  if (e) {
+    estimate.innerHTML =
+      `<b>Fabric: about ${e.metres} m.</b> ` +
+      `${e.openings > 1 ? `${e.openings} openings, ` : ""}a ${(e.rodCm / 100).toFixed(1)} m rod with ×${e.fullness} gathers, ` +
+      `curtains ${(e.dropCm / 100).toFixed(2)} m long. Measured from the photo; a salon checks it with a tape before cutting.`;
+  }
   const last = r.attempts?.at(-1);
   $("#seg").src = r.debug?.segmentation ?? "";
   // An attempt that failed before pasting has no paste picture; show the last one there is.

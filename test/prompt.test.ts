@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { editPrompt, refinements, type AttemptReport } from "../src/pipeline/tryon.ts";
-import { STYLES } from "../src/pipeline/styles.ts";
+import { estimateFabric, STYLES } from "../src/pipeline/styles.ts";
 import { refusalMessage, REFUSALS, sceneSchema, verdictPasses, type Verdict } from "../src/meta/vision.ts";
 
 const scene = sceneSchema.parse({
@@ -69,4 +69,14 @@ test("a catalogue style puts its cut in the prompt and forbids a new sheer", () 
   assert.match(prompt, /on each window in image 1, in this style: drapes forming soft, identical S-shaped waves/);
   assert.match(prompt, /no sheer or tulle that isn't on the window now/);
   assert.doesNotMatch(prompt, /one panel on each side/);
+});
+
+test("a fabric estimate: rod past both sides, times the fullness, rounded up to half a metre", () => {
+  const wave = STYLES.find((st) => st.id === "wave")!;
+  const e = estimateFabric(wave, [{ width_cm: 180, height_cm: 150 }, { width_cm: 120, height_cm: 150 }], 270);
+  assert.ok(e);
+  assert.equal(e.rodCm, 180 + 60 + 120 + 60);
+  assert.equal(e.metres, Math.ceil((420 * 2.2) / 100 * 2) / 2);
+  assert.equal(e.dropCm, 268);
+  assert.equal(estimateFabric(wave, [{ width_cm: 5, height_cm: 3 }]), undefined);
 });

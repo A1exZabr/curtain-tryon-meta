@@ -256,12 +256,18 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // The tone is matched only to measure (alignment, checks). The client sees the generator's own light and colour,
     // as CurtainBot does: every correction of it tried here (a pixel fit, a local light map) made rooms milky or dark.
     const resized = matchTone(room.rgb, rawResized, region);
-    const alignment = await findAlignment(room.rgb, resized, room.width, room.height, windowFrame);
+    // The whole picture is laid on the room outside where curtains may hang: the new curtains cover the window's
+    // frame, and aligning on the frame found false zooms of 5-7% that read as a changed room. Pasting needs the
+    // curtains on their windows, so it aligns on the frames and bends the picture between windows.
+    const wholeMode = req.whole ?? true;
+    const roomOnly = region.map((v) => (v ? 0 : 1));
+    const alignOn = !wholeMode ? windowFrame : area(roomOnly) > size * 0.2 ? roomOnly : new Uint8Array(size).fill(1);
+    const alignment = await findAlignment(room.rgb, resized, room.width, room.height, alignOn);
     // With several windows each is also aligned on its own frame, searching near the overall alignment; where that
     // fits clearly better, the picture bends to it (warpByColumns), so curtains land on their own windows.
     let placed: Buffer;
     let used: Alignment[] = [alignment];
-    if (windows.length >= 2) {
+    if (windows.length >= 2 && !wholeMode) {
       const anchors: { x: number; al: Alignment }[] = [];
       let local = 0;
       for (const w of windows) {

@@ -130,7 +130,10 @@ h2 { font-size: clamp(26px, 2.8vw, 34px); line-height: 1.1; margin-bottom: 12px;
 
 /* --- Try it ----------------------------------------------------------------------------------------------- */
 .try { background: var(--paper); padding: clamp(32px, 5vw, 64px) var(--pad); }
-.hint { color: var(--muted); max-width: 40em; margin: 0 0 24px; }
+.hint { color: var(--muted); max-width: 40em; margin: 0 0 8px; }
+.tips { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 24px; font-size: 15px; color: var(--muted); max-width: 1100px; }
+.tips li { border-left: 3px solid var(--tape); padding-left: 10px; }
+.tips b { color: var(--thread); font-weight: 600; }
 .drops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .drop {
   position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 2px;
@@ -195,8 +198,10 @@ h2 { font-size: clamp(26px, 2.8vw, 34px); line-height: 1.1; margin-bottom: 12px;
 .verdict { font-size: 18px; margin: 14px 0; max-width: 46em; }
 .verdict.ok { color: var(--ok); }
 .verdict.no { color: var(--bad); }
+.design { margin: -6px 0 14px; max-width: 46em; color: var(--muted); }
+.design b { color: var(--thread); font-weight: 600; }
 .inside summary { cursor: pointer; font-weight: 600; padding: 8px 0; width: max-content; max-width: 100%; }
-.inside-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+.inside-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
 .inside-grid figure { margin: 0; }
 .inside-grid img { width: 100%; background: var(--shade); }
 .inside-grid figcaption { font-size: 14px; color: var(--muted); padding-top: 6px; }
@@ -239,7 +244,7 @@ footer p { margin: 0; max-width: 60em; flex: 1 1 320px; }
   .steps li { display: grid; grid-template-columns: 32px minmax(0, 1fr); padding: 10px 0; border-bottom: 1px solid var(--line); }
   .steps li::before { grid-row: span 2; font-size: 22px; margin: 0; }
   .steps li.active::after { right: 0; }
-  .how-cols, .inside-grid { grid-template-columns: minmax(0, 1fr); }
+  .how-cols, .inside-grid, .tips { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {
   body { font-size: 16px; }

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="preload" href="/fonts/zabsoft-display.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/style.css?v=8">
+  <link rel="stylesheet" href="/style.css?v=11">
 </head>
 <body>
   <header class="top">
@@ -47,7 +47,12 @@
 
     <section class="try" id="try">
       <h2>Try it on your room</h2>
-      <p class="hint">Photos from a phone are fine. Take the room so the whole window is in the frame, and the fabric close up in daylight.</p>
+      <p class="hint">Photos from a phone are fine.</p>
+      <ul class="tips">
+        <li><b>Room:</b> stand facing the window with all of it in the frame, on the ordinary 1× lens rather than 0.5×. Old curtains can stay up.</li>
+        <li><b>Fabric:</b> a close-up in daylight without the flash, filling the frame, with a repeat or two of the pattern.</li>
+        <li><b>Send the photos themselves,</b> not screenshots.</li>
+      </ul>
       <form id="form">
         <div class="drops">
           <label class="drop" data-for="room">
@@ -85,10 +90,10 @@
       </form>
 
       <ol class="steps" id="steps" aria-live="polite">
-        <li data-step="read"><b>Read the photos</b><span>Muse Spark Open checks there is a window and a fabric, and reads the fabric's colour</span></li>
+        <li data-step="read"><b>Read the photos</b><span>Muse Spark Open checks there is a window and a fabric, reads the fabric and picks a curtain style for your room</span></li>
         <li data-step="segment"><b>Find the window</b><span>SAM 3.1 outlines the window and any curtains already there</span></li>
         <li data-step="generate"><b>Sew the curtains</b><span>Muse Image hangs curtains of your fabric on that window</span></li>
-        <li data-step="align"><b>Lay them over your photo</b><span>The result is aligned on the window, matched to your photo's light, and only the curtains are pasted in</span></li>
+        <li data-step="align"><b>Lay them over your photo</b><span>The result is aligned on the window, the curtains are lit like your room, and only they are pasted in</span></li>
         <li data-step="check"><b>Check the result</b><span>SAM 3.1 finds the new curtains, Muse Spark Open compares them with your fabric</span></li>
       </ol>
 
@@ -101,11 +106,13 @@
           <div class="tape" role="slider" tabindex="0" aria-label="Drag to compare before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>
         </div>
         <p class="verdict" id="verdict"></p>
+        <p class="design" id="design" hidden></p>
         <details class="inside">
           <summary>What the models saw</summary>
           <div class="inside-grid">
             <figure><img id="seg" alt="Window and allowed area found by SAM 3.1"><figcaption>Blue: the window SAM 3.1 found. Yellow: where curtains may hang. Red: curtains that were there before.</figcaption></figure>
             <figure><img id="paste" alt="Pixels taken from the generated image"><figcaption>Green: the only pixels taken from Muse Image. Everything else is your original photo.</figcaption></figure>
+            <figure><img id="light" alt="Light map of the room"><figcaption>The room's light map, from your photo: lighter means more light. Muse Image gets it with the photos, and the curtains are relit to it afterwards.</figcaption></figure>
           </div>
           <dl class="facts" id="facts"></dl>
           <div class="table-scroll"><table class="costs" id="costs"><caption>Every model call for this try-on</caption><thead><tr><th>Call</th><th>Time</th><th>Cost</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
@@ -130,6 +137,6 @@
     </a>
     <p>ZabSoft LLC, Batumi, Georgia, for the Meta Global AI Developer Hackathon. Photos you send go to Meta's and Baseten's APIs for your try-on; this demo doesn't store them.</p>
   </footer>
-  <script src="/app.js?v=6" type="module"></script>
+  <script src="/app.js?v=9" type="module"></script>
 </body>
 </html>

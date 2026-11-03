@@ -265,21 +265,31 @@ function showResult(r) {
   } else {
     $("#result-compare").hidden = true;
   }
+  const design = $("#design");
+  design.hidden = !r.design;
+  if (r.design) design.innerHTML = `<b>${escapeHtml(r.design.name)}.</b> ${escapeHtml(r.design.reason)}`;
   const last = r.attempts?.at(-1);
   $("#seg").src = r.debug?.segmentation ?? "";
   $("#paste").src = r.debug?.[`paste-${r.attempts?.length}`] ?? "";
+  $("#light").src = r.debug?.light ?? "";
+  $("#light").closest("figure").hidden = !r.debug?.light;
   const facts = [];
   if (r.scene) {
-    facts.push(["Fabric", `${r.scene.fabric_description} ${r.scene.fabric_colour_hex}`]);
+    facts.push(["Fabric", `${r.scene.fabric_description} ${r.scene.fabric_colour_hex}, ${r.scene.fabric_opacity ?? "opaque"}`]);
     facts.push(["Windows seen", String(r.scene.window_count)]);
+    const cover = { sheer: "tulle, kept as it is", curtains: "drawn curtains, kept closed", blinds: "blinds, kept as they are", mixed: "tulle or blinds, kept" }[r.scene.window_cover];
+    if (cover) facts.push(["On the window now", cover]);
   }
   if (last?.geometry) {
     facts.push(["Window unchanged", `difference ${last.geometry.windowDiff} of 255 after alignment`]);
     facts.push(["Curtains inside their area", `${Math.round(last.geometry.curtainsInsideRegion * 100)}%`]);
   }
   if (last?.colour) facts.push(["Colour drift fixed", `ΔE ${last.colour.deltaE.toFixed(1)} before the fix`]);
+  if (last?.light) facts.push(["Relit to the room's light", `brightness ×${last.light.minGain.toFixed(2)} to ×${last.light.maxGain.toFixed(2)} across the curtains`]);
   if (last?.verdict) facts.push(["Muse Spark Open says", `${last.verdict.notes} (score ${last.verdict.score})`]);
   facts.push(["Attempts", String(r.attempts?.length ?? 0)]);
+  const retry = r.attempts?.find((a) => a.fixes?.length);
+  if (retry) facts.push(["Second try told Muse Image", retry.fixes.join(" ")]);
   $("#facts").innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join("");
   $("#costs tbody").innerHTML = (r.costs ?? [])
     .map((c) => `<tr><td>${escapeHtml(c.what)}</td><td>${(c.ms / 1000).toFixed(1)} s</td><td>$${c.usd.toFixed(4)}</td></tr>`)

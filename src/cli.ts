@@ -16,6 +16,9 @@ const { values } = parseArgs({
     out: { type: "string", default: "out/run" },
     reuse: { type: "string" },
     attempts: { type: "string" },
+    "no-light-hint": { type: "boolean" },
+    "no-design": { type: "boolean" },
+    "style-samples": { type: "boolean" },
   },
 });
 if (!values.room || !values.fabric) throw new Error("--room and --fabric are required");
@@ -28,6 +31,9 @@ const report = await tryOn({
   checker: values.checker === "spark" ? "spark" : values.checker === "spark-open" ? "spark-open" : undefined,
   reuseGenerated: values.reuse ? readFileSync(values.reuse) : undefined,
   maxAttempts: values.attempts ? Number(values.attempts) : undefined,
+  lightHint: !values["no-light-hint"],
+  design: !values["no-design"],
+  styleSamples: values["style-samples"],
 });
 
 const out = values.out!;

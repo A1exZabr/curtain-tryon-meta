@@ -52,28 +52,42 @@ export interface ColourLock {
 }
 
 /**
- * Generators drift the fabric's colour (usually darker and more saturated). Moves the curtains' mean hue to the
- * fabric's, and half of the lightness gap, keeping every fold and shadow: each pixel is shifted by the same Lab
- * offset. Lightness only moves halfway because curtains against a bright window really are darker than a swatch.
+ * Generators drift the fabric's colour (usually darker and more saturated). Pulls the curtains' mean colour to the
+ * fabric's hue, and half of the lightness gap, by scaling each linear RGB channel, the way a white balance does.
+ * Scaling keeps every fold and shadow in proportion: a dark fold stays as dark relative to the lit cloth around it
+ * and doesn't turn milky or oversaturated, which a flat Lab offset did. Lightness only moves halfway because
+ * curtains against a bright window really are darker than a swatch.
  */
 export function lockFabricColour(rgb: Buffer, curtains: Mask, fabric: [number, number, number]): ColourLock {
-  let L = 0, A = 0, B = 0, n = 0;
+  let R = 0, G = 0, B = 0, n = 0;
   for (let i = 0; i < curtains.length; i += 3) {
     if (!curtains[i]) continue;
-    const [l, a, b] = rgbToLab(rgb[i * 3]!, rgb[i * 3 + 1]!, rgb[i * 3 + 2]!);
-    L += l; A += a; B += b; n++;
+    R += srgbToLinear(rgb[i * 3]!); G += srgbToLinear(rgb[i * 3 + 1]!); B += srgbToLinear(rgb[i * 3 + 2]!);
+    n++;
   }
-  const before: [number, number, number] = n ? [L / n, A / n, B / n] : fabric;
-  const dL = (fabric[0] - before[0]) * 0.5;
-  const dA = fabric[1] - before[1];
-  const dB = fabric[2] - before[2];
+  if (!n) return { before: fabric, target: fabric, deltaE: 0 };
+  const mean = [R / n, G / n, B / n] as const;
+  const before = rgbToLab(linearToSrgb(mean[0]), linearToSrgb(mean[1]), linearToSrgb(mean[2]));
+  // The fabric's colour at the lightness halfway between the curtains' and the swatch's.
+  const target = labToLinear((before[0] + fabric[0]) / 2, fabric[1], fabric[2]);
+  const gain = [0, 1, 2].map((c) => Math.min(5, Math.max(0.2, target[c]! / Math.max(1e-4, mean[c]!))));
   for (let i = 0; i < curtains.length; i++) {
     if (!curtains[i]) continue;
     const j = i * 3;
-    const [l, a, b] = rgbToLab(rgb[j]!, rgb[j + 1]!, rgb[j + 2]!);
-    const [r, g, bl] = labToRgb(l + dL, a + dA, b + dB);
-    rgb[j] = r; rgb[j + 1] = g; rgb[j + 2] = bl;
+    rgb[j] = linearToSrgb(srgbToLinear(rgb[j]!) * gain[0]!);
+    rgb[j + 1] = linearToSrgb(srgbToLinear(rgb[j + 1]!) * gain[1]!);
+    rgb[j + 2] = linearToSrgb(srgbToLinear(rgb[j + 2]!) * gain[2]!);
   }
   const deltaE = Math.hypot(fabric[0] - before[0], fabric[1] - before[1], fabric[2] - before[2]);
   return { before, target: fabric, deltaE };
+}
+
+function labToLinear(L: number, a: number, bb: number): [number, number, number] {
+  const fy = (L + 16) / 116;
+  const x = fInv(fy + a / 500) * 0.95047, y = fInv(fy), z = fInv(fy - bb / 200) * 1.08883;
+  return [
+    Math.max(0, 3.2406 * x - 1.5372 * y - 0.4986 * z),
+    Math.max(0, -0.9689 * x + 1.8758 * y + 0.0415 * z),
+    Math.max(0, 0.0557 * x - 0.204 * y + 1.057 * z),
+  ];
 }

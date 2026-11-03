@@ -55,3 +55,15 @@ test("a feathered composite still leaves everything outside the mask untouched",
   assert.equal(changedOutside(original, out, paste), 0);
   for (let i = 0; i < W * H; i++) if (!paste[i]) assert.equal(out[i * 3], 100);
 });
+
+test("the soft edge starts near the original at the border and is opaque deep inside", async () => {
+  const w = 60, h = 60;
+  const original = Buffer.alloc(w * h * 3, 100);
+  const generated = Buffer.alloc(w * h * 3, 200);
+  const paste = new Uint8Array(w * h);
+  for (let y = 10; y < 50; y++) for (let x = 10; x < 50; x++) paste[y * w + x] = 1;
+  const out = await composite(original, generated, paste, w, h, 6);
+  assert.ok(out[(30 * w + 10) * 3]! < 125, "border pixel stays close to the original");
+  assert.equal(out[(30 * w + 30) * 3], 200);
+  assert.equal(out[(30 * w + 9) * 3], 100);
+});

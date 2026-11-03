@@ -3,7 +3,10 @@ import type { Mask } from "./region.ts";
 
 /**
  * Takes the generated pixels only inside `paste` and the original pixels everywhere else, with a soft edge of
- * about `feather` pixels inside the mask. Outside the mask the output is byte-for-byte the original photo.
+ * about `feather` pixels inside the mask. The opacity starts from 0 at the mask's border and reaches 1 a little
+ * under `feather` pixels in, so there is no step at the border and whatever lies deeper than that (the curtain
+ * itself, when the mask was grown by `feather`) is fully opaque. Outside the mask the output is byte-for-byte the
+ * original photo.
  */
 export async function composite(
   original: Buffer,
@@ -25,8 +28,9 @@ export async function composite(
       : hard;
   const out = Buffer.alloc(width * height * 3);
   for (let i = 0; i < width * height; i++) {
-    // The soft edge only fades inward: outside the hard mask alpha is exactly 0.
-    const alpha = paste[i] ? (soft[i] ?? 0) / 255 : 0;
+    // The blurred mask is 0.5 right at the border and close to 1 two sigmas in; stretch that to 0..1. Outside the
+    // hard mask alpha is exactly 0.
+    const alpha = paste[i] ? Math.min(1, Math.max(0, ((soft[i] ?? 0) / 255 - 0.5) / 0.45)) : 0;
     for (let c = 0; c < 3; c++) {
       const j = i * 3 + c;
       out[j] = alpha === 0 ? original[j]! : Math.round(original[j]! * (1 - alpha) + generated[j]! * alpha);

@@ -1,26 +1,36 @@
 # Evaluation results
 
-Run on 2026-11-03 10:47 UTC with `npm run eval`, checker: spark-open.
+Run on 2026-11-03 17:44 UTC with `npm run eval -- --variant full`, checker: spark-open.
 Photos come from Unsplash, Pexels and Wikimedia Commons under their free licences; see `eval/photos.json` for authors and links.
 
-- Accepted try-ons: **6 of 11** (55%), 5 on the first attempt.
+- Accepted try-ons: **13 of 20** (65%), 6 on the first attempt.
 - A photo with no room in it was refused before generation: yes.
-- Pixels of the room outside the curtains changed by the engine: **0** (by construction: they are copied from the original).
-- The same, if the raw Muse Image output were shown instead: **21%** of the room on average.
-- Cost per accepted try-on: **$0.080** (all calls of all runs, failures included, divided by accepted ones).
-- Median time of an accepted try-on: **78 s**.
+- The client sees Muse Image's own picture, aligned on the window. It is shown only if at least 85% of the photo's edges outside the curtains and windows are still there and the rest of the room differs by at most 18 of 255; otherwise it is made again.
+- In the accepted pictures: median **98%** of the photo's edges kept, median room difference **3** of 255.
+- Generations thrown away because the generator changed the room: **14 of 44**.
+- Cost per accepted try-on: **$0.150** (all calls of all runs, failures included, divided by accepted ones).
+- Median time of an accepted try-on: **94 s**.
 
-| Run | Room | Fabric | Result | Attempts | Window difference (0–255) | Curtains in their area | Colour drift fixed (ΔE) | Raw output changed | Checker score | Cost | Time |
+| Run | Room | Fabric | Result | Attempts | Window difference (0–255) | Curtains in their area | Colour drift fixed (ΔE) | Photo's edges kept | Checker score | Cost | Time |
 |-|-|-|-|-|-|-|-|-|-|-|-|
-| 01 | room-01 | fabric-01 | accepted | 1 | 8 | 96% | 7.9 | 30% | 0.95 | $0.033 | 77 s |
-| 02 | room-02 | fabric-02 | failed: result check: ARTIFACTS, CUT_EDGE (Curtains correctly placed and fabric matches sage velvet but edges show smearing and ghosting artifacts.) | 2 | 21 | 100% | 17.2 | 21% | 0.72 | $0.055 | 139 s |
-| 03 | room-03 | fabric-03 | accepted | 1 | 20 | 88% | 14.2 | 29% | 0.95 | $0.032 | 79 s |
-| 04 | room-04 | fabric-04 + style-01 | accepted | 1 | 2 | 100% | 18.3 | 18% | 0.95 | $0.032 | 78 s |
-| 05 | room-05 | fabric-05 | accepted | 1 | 8 | 100% | 11.6 | 39% | 0.92 | $0.034 | 63 s |
-| 06 | room-06 | fabric-01 | failed: result check: WRONG_FABRIC, CUT_EDGE (Curtains are sheer white not opaque beige linen, with rough jagged edges on right side.) | 2 | 2 | 100% | 65.7 | 11% | 0.45 | $0.056 | 92 s |
-| 07 | room-07 | fabric-02 | failed: result check: ARTIFACTS (Curtains match sage velvet hue and sheen but left window shows dark ghosting artifact from original sheer.) | 2 | 25 | 100% | 27.7 | 19% | 0.68 | $0.056 | 114 s |
-| 08 | room-08 | fabric-03 | rejected_input: NO_WINDOW (segmentation) | 0 | – | – | – | – | – | $0.016 | 9 s |
-| 09 | room-09 | fabric-04 | failed: result check: WRONG_FABRIC, ARTIFACTS, CUT_EDGE (Curtains are teal not beige-orange herringbone and left curtain has light-bleed artifact with hard cut edge.) | 2 | 7 | 99% | 46.6 | 26% | 0.35 | $0.056 | 112 s |
-| 11 | room-11 | fabric-05 + style-01 | accepted | 2 | 4 | 100% | 19.4 | 12% | 0.92 | $0.058 | 111 s |
-| 12 | room-12 | fabric-01 | accepted | 1 | 1 | 100% | 56.1 | 13% | 0.90 | $0.033 | 51 s |
-| 13-no-room | fabric-02 | fabric-04 | rejected_input: NOT_A_ROOM, NO_WINDOW | 0 | – | – | – | – | – | $0.015 | 15 s |
+| 01 | room-01 | fabric-01 | failed: the generator changed the room (12% of the photo's edges kept, difference 24) | 3 | 19 | 100% | – | 12% | – | $0.080 | 143 s |
+| 02 | room-02 | fabric-02 | failed: the generator changed the room (44% of the photo's edges kept, difference 52) | 3 | 32 | 100% | – | 44% | – | $0.082 | 143 s |
+| 03 | room-03 | fabric-03 | accepted | 1 | 4 | 85% | 3.6 | 96% | 0.96 | $0.073 | 90 s |
+| 04 | room-04 | fabric-04 + style-01 | accepted | 1 | 3 | 100% | 10.4 | 100% | 0.96 | $0.077 | 93 s |
+| 05 | room-05 | fabric-05 | accepted | 2 | 4 | 100% | 13.2 | 94% | 0.96 | $0.100 | 131 s |
+| 06 | room-06 | fabric-01 | accepted | 3 | 6 | 100% | 39.1 | 100% | 0.96 | $0.143 | 174 s |
+| 07 | room-07 | fabric-02 | accepted | 1 | 4 | 100% | 2.7 | 100% | 0.96 | $0.076 | 90 s |
+| 08 | room-08 | fabric-03 | accepted | 2 | 1 | 100% | 23.3 | 98% | 0.96 | $0.101 | 97 s |
+| 09 | room-09 | fabric-04 | failed: the window moved or was redrawn (difference 55 of 255) | 3 | 55 | 97% | – | – | – | $0.123 | 177 s |
+| 11 | room-11 | fabric-05 + style-01 | failed: the generator changed the room (35% of the photo's edges kept, difference 16) | 3 | 0 | 100% | – | 35% | – | $0.119 | 141 s |
+| 12 | room-12 | fabric-01 | accepted | 2 | 10 | 100% | 43.8 | 96% | 0.96 | $0.134 | 108 s |
+| 13 | room-13 | fabric-02 | accepted | 2 | 5 | 100% | 6.1 | 87% | 0.96 | $0.096 | 94 s |
+| 13-no-room | fabric-02 | fabric-04 | rejected_input: NOT_A_ROOM, NO_WINDOW | 0 | – | – | – | – | – | $0.030 | 18 s |
+| 14 | room-14 | fabric-01 | accepted | 1 | 3 | 100% | 5.7 | 99% | 0.96 | $0.080 | 48 s |
+| 15 | room-15 | fabric-03 | failed: curtains spill outside the window area (58% inside) | 3 | 0 | 58% | – | – | – | $0.091 | 119 s |
+| 16 | room-16 | fabric-05 | failed: curtains spill outside the window area (75% inside) | 3 | 6 | 75% | – | – | – | $0.081 | 121 s |
+| 17 | room-17 | fabric-04 | accepted | 3 | 5 | 100% | 40.2 | 98% | 0.96 | $0.108 | 125 s |
+| 18 | room-18 | fabric-02 | accepted | 1 | 5 | 100% | 8.8 | 99% | 0.96 | $0.078 | 50 s |
+| 19 | room-19 | fabric-01 | failed: the tulle on the window was taken down (0% left) | 3 | 18 | 100% | – | – | – | $0.090 | 87 s |
+| 20 | room-20 | fabric-03 | accepted | 3 | 2 | 100% | 10.6 | 93% | 0.96 | $0.112 | 120 s |
+| 21 | room-21 | fabric-04 | accepted | 1 | 7 | 100% | 32.1 | 93% | 0.96 | $0.078 | 56 s |

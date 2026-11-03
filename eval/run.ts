@@ -1,9 +1,10 @@
 // Runs the engine over the fixed evaluation set in eval/photos.json and writes eval/RESULTS.md.
 // Photos are fetched from their source URLs (they are not stored in the repo) and cached under data/.
 // Usage: ops/with-env.sh npm run eval -- [--only room-01,room-02] [--parallel 3] [--checker spark|spark-open]
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// --render out/eval/summary.json writes the report again from a finished run, without calling any model.
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { tryOn, type TryOnReport } from "../src/pipeline/tryon.ts";
+import { LIMITS, tryOn, type TryOnReport } from "../src/pipeline/tryon.ts";
 import { spentToday } from "../src/budget.ts";
 
 interface Photo { id: string; url: string; source_page: string; author: string; license: string; notes?: string }
@@ -18,6 +19,7 @@ const { values } = parseArgs({
     // Which stages run, for the ablation: raw (Muse Image and the checker only), paste, light, design, full.
     variant: { type: "string", default: "full" },
     results: { type: "string", default: "eval/RESULTS.md" },
+    render: { type: "string" },
   },
 });
 const set = JSON.parse(readFileSync("eval/photos.json", "utf8")) as Set;
@@ -105,14 +107,18 @@ async function runJob(job: (typeof JOBS)[number]): Promise<void> {
   }
 }
 
-const queue = [...jobs];
-await Promise.all(
-  Array.from({ length: Number(values.parallel) }, async () => {
-    for (let job = queue.shift(); job; job = queue.shift()) await runJob(job);
-  }),
-);
-results.sort((a, b) => a.job.id.localeCompare(b.job.id));
-writeFileSync(`${values.out}/summary.json`, JSON.stringify(results, null, 2));
+if (values.render) {
+  results.push(...JSON.parse(readFileSync(values.render, "utf8")));
+} else {
+  const queue = [...jobs];
+  await Promise.all(
+    Array.from({ length: Number(values.parallel) }, async () => {
+      for (let job = queue.shift(); job; job = queue.shift()) await runJob(job);
+    }),
+  );
+  results.sort((a, b) => a.job.id.localeCompare(b.job.id));
+  writeFileSync(`${values.out}/summary.json`, JSON.stringify(results, null, 2));
+}
 
 // ---- Report ----
 const real = results.filter((r) => !r.job.expect);
@@ -125,28 +131,43 @@ const raw = real.flatMap((r) => r.report?.attempts.map((a) => a.rawChangedOutsid
 const rawMean = raw.length ? raw.reduce((s, v) => s + v, 0) / raw.length : 0;
 const firstTry = accepted.filter((r) => r.report!.attempts.length === 1).length;
 const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+// In the whole-picture mode the client sees Muse Image's own picture, so the report says how much of the room it kept.
+const whole = real.some((r) => r.report?.attempts.some((a) => a.mode === "whole"));
+const allAttempts = real.flatMap((r) => r.report?.attempts ?? []);
+const roomChanged = allAttempts.filter((a) => a.why?.startsWith("the generator changed the room")).length;
+const shown = accepted.map((r) => r.report!.attempts.at(-1)!.geometry);
+const mid = (v: number[]) => (v.length ? [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]! : 0);
+const ranAt = values.render ? statSync(values.render).mtime : new Date();
 
 const lines = [
   "# Evaluation results",
   "",
-  `Run on ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC with \`npm run eval -- --variant ${values.variant}\`, checker: ${results[0]?.report?.checker ?? "?"}.`,
+  `Run on ${ranAt.toISOString().slice(0, 16).replace("T", " ")} UTC with \`npm run eval -- --variant ${values.variant}\`, checker: ${results[0]?.report?.checker ?? "?"}.`,
   "Photos come from Unsplash, Pexels and Wikimedia Commons under their free licences; see `eval/photos.json` for authors and links.",
   "",
   `- Accepted try-ons: **${accepted.length} of ${real.length}** (${pct(accepted.length / Math.max(1, real.length))}), ${firstTry} on the first attempt.`,
   `- A photo with no room in it was refused before generation: ${refusedRight.length ? "yes" : "no"}.`,
-  values.variant === "raw"
-    ? "- Pixels of the room outside the curtains changed: not measured in this variant, the generator's picture is shown as it comes."
-    : `- Pixels of the room outside the curtains changed by the engine: **0** (by construction: they are copied from the original).`,
-  `- The same, if the raw Muse Image output were shown instead: **${pct(rawMean)}** of the room on average.`,
+  ...(whole
+    ? [
+        `- The client sees Muse Image's own picture, aligned on the window. It is shown only if at least ${pct(LIMITS.minEdgesKept)} of the photo's edges outside the curtains and windows are still there and the rest of the room differs by at most ${LIMITS.maxRoomDiff} of 255; otherwise it is made again.`,
+        `- In the accepted pictures: median **${pct(mid(shown.map((g) => g.edgesKept ?? 0)))}** of the photo's edges kept, median room difference **${mid(shown.map((g) => g.roomDiff ?? 0))}** of 255.`,
+        `- Generations thrown away because the generator changed the room: **${roomChanged} of ${allAttempts.length}**.`,
+      ]
+    : [
+        values.variant === "raw"
+          ? "- Pixels of the room outside the curtains changed: not measured in this variant, the generator's picture is shown as it comes."
+          : `- Pixels of the room outside the curtains changed by the engine: **0** (by construction: they are copied from the original).`,
+        `- The same, if the raw Muse Image output were shown instead: **${pct(rawMean)}** of the room on average.`,
+      ]),
   `- Cost per accepted try-on: **$${(allCost / Math.max(1, accepted.length)).toFixed(3)}** (all calls of all runs, failures included, divided by accepted ones).`,
   `- Median time of an accepted try-on: **${median.toFixed(0)} s**.`,
   "",
-  "| Run | Room | Fabric | Result | Attempts | Window difference (0–255) | Curtains in their area | Colour drift fixed (ΔE) | Raw output changed | Checker score | Cost | Time |",
+  `| Run | Room | Fabric | Result | Attempts | Window difference (0–255) | Curtains in their area | Colour drift fixed (ΔE) | ${whole ? "Photo's edges kept" : "Raw output changed"} | Checker score | Cost | Time |`,
   "|-|-|-|-|-|-|-|-|-|-|-|-|",
   ...results.map((r) => {
     const a = r.report?.attempts.at(-1);
     const cell = (v: string | undefined) => v ?? "–";
-    return `| ${r.job.id} | ${r.job.room} | ${r.job.fabric}${r.job.style ? ` + ${r.job.style}` : ""} | ${r.error ? "error" : r.report!.status}${r.report?.reason ? `: ${r.report.reason.replace(/\|/g, "/")}` : ""} | ${r.report?.attempts.length ?? "–"} | ${cell(a ? String(a.geometry.windowDiff) : undefined)} | ${cell(a && pct(a.geometry.curtainsInsideRegion))} | ${cell(a?.colour?.deltaE.toFixed(1))} | ${cell(a?.rawChangedOutside !== undefined ? pct(a.rawChangedOutside) : undefined)} | ${cell(a?.verdict?.score.toFixed(2))} | ${r.report ? `$${r.report.totalUsd.toFixed(3)}` : "–"} | ${r.report ? `${(r.report.ms / 1000).toFixed(0)} s` : "–"} |`;
+    return `| ${r.job.id} | ${r.job.room} | ${r.job.fabric}${r.job.style ? ` + ${r.job.style}` : ""} | ${r.error ? "error" : r.report!.status}${r.report?.reason ? `: ${r.report.reason.replace(/\|/g, "/")}` : ""} | ${r.report?.attempts.length ?? "–"} | ${cell(a ? String(a.geometry.windowDiff) : undefined)} | ${cell(a && pct(a.geometry.curtainsInsideRegion))} | ${cell(a?.colour?.deltaE.toFixed(1))} | ${cell(whole ? (a?.geometry.edgesKept !== undefined ? pct(a.geometry.edgesKept) : undefined) : a?.rawChangedOutside !== undefined ? pct(a.rawChangedOutside) : undefined)} | ${cell(a?.verdict?.score.toFixed(2))} | ${r.report ? `$${r.report.totalUsd.toFixed(3)}` : "–"} | ${r.report ? `${(r.report.ms / 1000).toFixed(0)} s` : "–"} |`;
   }),
   "",
 ];

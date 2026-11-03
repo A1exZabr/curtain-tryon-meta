@@ -28,7 +28,7 @@
     <section class="hero">
       <h1>See the fabric on your own window.</h1>
       <div class="hero-text">
-        <p class="lede">A curtain salon's client picks a fabric from a swatch and has to imagine it at home. Send a photo of the room and a photo of the fabric, and get the same room with those curtains. Only the curtains change: every other pixel of the photo stays as it was.</p>
+        <p class="lede">A curtain salon's client picks a fabric from a swatch and has to imagine it at home. Send a photo of the room and a photo of the fabric, and get the same room with those curtains. Only the curtains change: the window, the view, the furniture and the framing stay as they were, and a picture where they didn't is made again.</p>
         <p class="built">CurtainBot, a try-on bot for curtain salons, existed before the hackathon. This try-on engine on Meta models was built during it.</p>
       </div>
       <figure class="hero-compare">
@@ -101,7 +101,7 @@
         <li data-step="read"><b>Read the photos</b><span>Muse Spark Open checks there is a window and a fabric, reads the fabric and measures the window</span></li>
         <li data-step="segment"><b>Find the window</b><span>SAM 3.1 outlines the window and any curtains already there</span></li>
         <li data-step="generate"><b>Sew the curtains</b><span>Muse Image hangs curtains of your fabric on that window</span></li>
-        <li data-step="align"><b>Lay them over your photo</b><span>The result is aligned on the window, the curtains are lit like your room, and only they are pasted in</span></li>
+        <li data-step="align"><b>Compare with your photo</b><span>The picture is aligned on the window and checked edge by edge against your photo; if anything else moved, it is made again</span></li>
         <li data-step="check"><b>Check the result</b><span>SAM 3.1 finds the new curtains, Muse Spark Open compares them with your fabric</span></li>
       </ol>
 
@@ -134,7 +134,7 @@
       <h2>How it works</h2>
       <div class="how-cols">
         <p>Image generators are good at curtains and bad at leaving everything else alone. Asked to change one thing, they redraw the whole frame: furniture shifts, the view outside changes, colours drift. A salon can't charge for that.</p>
-        <p>So the generator never gets the last word. SAM 3.1 decides where curtains may go, Muse Image only supplies the curtains, and the engine pastes them into the original photo. Every pixel outside the curtains is the client's own photo. The fabric's colour is measured on the swatch and the curtains are pulled back to it, keeping their folds and shadows.</p>
+        <p>So the generator never gets the last word. SAM 3.1 finds the window and decides where curtains may go. Muse Image draws the picture, told to change only the curtains, and the engine lays it over the client's photo and compares the two edge by edge: if the window moved, a lamp disappeared or the framing shifted, the picture is thrown away and made again. The fabric's colour is measured on the swatch and the curtains are pulled back to it, keeping their folds and shadows.</p>
         <p>Two checks frame the generation. Before it, Muse Spark Open, Meta's open-weight model, refuses a photo with no window or no fabric for under two cents, before anything is generated, and tells the client what to send instead. After it, the engine checks the window hasn't moved and the curtains stay in their area, and Muse Spark Open compares them with the fabric. A result that fails is generated again, and the client only ever sees one that passed.</p>
       </div>
       <div class="numbers" id="numbers"></div>

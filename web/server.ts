@@ -9,6 +9,7 @@ import { BudgetExceeded, CostLog, spentToday } from "../src/budget.ts";
 import { SPEND_CAP_USD_PER_DAY } from "../src/config.ts";
 import { transcribe } from "../src/meta/transcribe.ts";
 import { tryOn, type Step, type TryOnReport } from "../src/pipeline/tryon.ts";
+import { STYLES, styleById } from "../src/pipeline/styles.ts";
 
 const PORT = Number(process.env.PORT ?? "8080");
 const PUBLIC = join(import.meta.dirname, "public");
@@ -26,7 +27,7 @@ interface Job {
   error?: string;
   result?: unknown;
   created: number;
-  input: { room: Buffer; fabric: Buffer; style?: Buffer; wish?: string };
+  input: { room: Buffer; fabric: Buffer; style?: Buffer; styleId?: string; wish?: string };
 }
 
 const jobs = new Map<string, Job>();
@@ -103,7 +104,7 @@ async function runNext(): Promise<void> {
         reason: report.reason,
         windows: report.scene?.window_count,
         cover: report.scene?.window_cover,
-        style: report.design?.style,
+        style: report.style?.id,
         attempts: report.attempts.map((a) => ({
           mode: a.mode,
           roomDiff: a.geometry.roomDiff,
@@ -191,6 +192,10 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { ok: true, running, queued: queue.length, spentToday: +spentToday().toFixed(4), cap: SPEND_CAP_USD_PER_DAY });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/styles") {
+      return send(res, 200, STYLES.map(({ id, name, hint }) => ({ id, name, hint })));
+    }
+
     if (req.method === "GET" && url.pathname === "/api/gallery") {
       const items = existsSync(GALLERY)
         ? readdirSync(GALLERY)
@@ -215,9 +220,10 @@ const server = createServer(async (req, res) => {
       const fabric = fromDataUrl(body.fabric);
       if (!room || !fabric) return send(res, 400, { error: "Please add a room photo and a fabric photo." });
       const wish = typeof body.wish === "string" ? body.wish.slice(0, 300) : undefined;
+      const styleId = typeof body.styleId === "string" && styleById(body.styleId) ? body.styleId : undefined;
       recent.push(now);
       triesByVisitor.set(ip, recent);
-      const job: Job = { id: randomUUID(), status: "queued", created: now, input: { room, fabric, style: fromDataUrl(body.style), wish } };
+      const job: Job = { id: randomUUID(), status: "queued", created: now, input: { room, fabric, style: fromDataUrl(body.style), styleId, wish } };
       jobs.set(job.id, job);
       queue.push(job);
       void runNext();

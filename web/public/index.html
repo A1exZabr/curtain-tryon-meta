@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="preload" href="/fonts/zabsoft-display.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=14">
 </head>
 <body>
   <header class="top">
@@ -69,14 +69,22 @@
             <strong>Your fabric</strong>
             <span class="drop-hint">A close-up of the swatch</span>
           </label>
-          <label class="drop optional" data-for="style">
+        </div>
+        <fieldset class="style-pick">
+          <legend>How they're sewn</legend>
+          <div class="toggle" role="group" aria-label="Where the style comes from">
+            <button type="button" class="toggle-btn" data-mode="catalogue" aria-pressed="true">Our styles</button>
+            <button type="button" class="toggle-btn" data-mode="photo" aria-pressed="false">Your photo</button>
+          </div>
+          <div class="styles" id="styles" role="radiogroup" aria-label="Curtain style"></div>
+          <label class="drop optional" data-for="style" hidden>
             <input type="file" name="style" accept="image/*">
             <img alt="" draggable="false">
             <span class="drop-action">Add photo</span>
-            <strong>How it's sewn</strong>
-            <span class="drop-hint">Optional: a photo of curtains you like</span>
+            <strong>Curtains you like</strong>
+            <span class="drop-hint">A photo of curtains sewn the way you want</span>
           </label>
-        </div>
+        </fieldset>
         <div class="wish">
           <label for="wish">Anything else? Type it or say it.</label>
           <div class="wish-row">
@@ -90,7 +98,7 @@
       </form>
 
       <ol class="steps" id="steps" aria-live="polite">
-        <li data-step="read"><b>Read the photos</b><span>Muse Spark Open checks there is a window and a fabric, reads the fabric and picks a curtain style for your room</span></li>
+        <li data-step="read"><b>Read the photos</b><span>Muse Spark Open checks there is a window and a fabric, reads the fabric and measures the window</span></li>
         <li data-step="segment"><b>Find the window</b><span>SAM 3.1 outlines the window and any curtains already there</span></li>
         <li data-step="generate"><b>Sew the curtains</b><span>Muse Image hangs curtains of your fabric on that window</span></li>
         <li data-step="align"><b>Lay them over your photo</b><span>The result is aligned on the window, the curtains are lit like your room, and only they are pasted in</span></li>
@@ -139,6 +147,6 @@
     </a>
     <p>ZabSoft LLC, Batumi, Georgia, for the Meta Global AI Developer Hackathon. Photos you send go to Meta's and Baseten's APIs for your try-on; this demo doesn't store them.</p>
   </footer>
-  <script src="/app.js?v=13" type="module"></script>
+  <script src="/app.js?v=14" type="module"></script>
 </body>
 </html>

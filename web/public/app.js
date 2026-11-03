@@ -87,6 +87,41 @@ function renderNumbers(stats) {
     .join("");
 }
 
+// --- Style: one of our styles, or a photo of curtains the client likes ---------------------------------------
+// Small drawings of each style: a window with its drapes, in the text colour.
+const SKETCH = {
+  straight: '<rect x="15" y="6" width="18" height="26"/><path d="M8 4h32M9 4v32M14 4v32M34 4v32M39 4v32"/>',
+  tiebacks: '<rect x="15" y="6" width="18" height="26"/><path d="M8 4h32M9 4v32M14 4c0 9-1 13 0 14-1 4-3 10-5 18M34 4c0 9 1 13 0 14 1 4 3 10 5 18"/>',
+  holdbacks: '<rect x="15" y="6" width="18" height="26"/><path d="M8 4h32M9 4v32M14 4c0 14 0 20-3 24M34 4c0 14 0 20 3 24"/><circle cx="12" cy="27" r="1.5"/><circle cx="36" cy="27" r="1.5"/>',
+  rings: '<rect x="15" y="6" width="18" height="26"/><path d="M6 4h36M9 6v30M14 6v30M34 6v30M39 6v30"/><circle cx="10" cy="4" r="1.3"/><circle cx="13" cy="4" r="1.3"/><circle cx="35" cy="4" r="1.3"/><circle cx="38" cy="4" r="1.3"/>',
+  eyelets: '<rect x="15" y="6" width="18" height="26"/><path d="M6 5h36M8 5q1.5 3 3 0t3 0M34 5q1.5 3 3 0t3 0M8 5v31M14 5v31M34 5v31M40 5v31"/>',
+  "ceiling-track": '<rect x="15" y="8" width="18" height="24"/><path d="M4 2h40M8 2v34M10 2v34M12 2v34M14 2v34M34 2v34M36 2v34M38 2v34M40 2v34"/>',
+  wave: '<rect x="15" y="8" width="18" height="24"/><path d="M4 2h40M8 2q2 4 4 0t4 0M32 2q2 4 4 0t4 0M8 2v34M16 2v34M32 2v34M40 2v34"/>',
+  "one-side": '<rect x="15" y="6" width="18" height="26"/><path d="M8 4h32M9 4v32M15 4c0 9-1 13 0 14-1 4-3 10-6 18"/>',
+  "fold-over": '<rect x="15" y="9" width="18" height="23"/><path d="M8 4h32M8 4v4h7V4M33 4v4h7V4M9 8v28M14 8c0 8-1 11 0 12-1 4-3 9-5 16M34 8c0 8 1 11 0 12 1 4 3 9 5 16"/>',
+};
+let styleMode = "catalogue";
+
+async function loadStyles() {
+  const styles = await fetch("/api/styles").then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  $("#styles").innerHTML = styles
+    .map(
+      (s, i) => `<label class="style-card"><input type="radio" name="styleId" value="${s.id}"${i === 0 ? " checked" : ""}>` +
+        `<svg viewBox="0 0 48 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">${SKETCH[s.id] ?? ""}</svg>` +
+        `<b>${escapeHtml(s.name)}</b><span>${escapeHtml(s.hint)}</span></label>`,
+    )
+    .join("");
+}
+
+document.querySelectorAll(".toggle-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    styleMode = button.dataset.mode;
+    document.querySelectorAll(".toggle-btn").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+    $("#styles").hidden = styleMode !== "catalogue";
+    $('.drop[data-for="style"]').hidden = styleMode !== "photo";
+  });
+});
+
 // --- Uploads: shrink in the browser so phones don't send 8 MB photos ----------------------------------------
 async function shrink(file, longSide = 1600) {
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
@@ -211,6 +246,8 @@ $("#form").addEventListener("submit", async (e) => {
   e.preventDefault();
   formError();
   if (!photos.room || !photos.fabric) return formError("Add a photo of your room and a photo of your fabric.");
+  if (styleMode === "photo" && !photos.style) return formError("Add a photo of curtains you like, or pick one of our styles.");
+  const styleId = styleMode === "catalogue" ? document.querySelector('input[name="styleId"]:checked')?.value : undefined;
   const go = $("#go");
   go.disabled = true;
   go.textContent = "Working on it…";
@@ -220,7 +257,13 @@ $("#form").addEventListener("submit", async (e) => {
     const res = await fetch("/api/tryon", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ room: photos.room, fabric: photos.fabric, style: photos.style, wish: $("#wish").value.trim() || undefined }),
+      body: JSON.stringify({
+        room: photos.room,
+        fabric: photos.fabric,
+        style: styleMode === "photo" ? photos.style : undefined,
+        styleId,
+        wish: $("#wish").value.trim() || undefined,
+      }),
     });
     const started = await res.json().catch(() => ({ error: "The demo is busy restarting. Please try again in a minute." }));
     if (!res.ok || !started.id) throw new Error(started.error);
@@ -282,12 +325,8 @@ function showResult(r) {
     $("#save").hidden = true;
   }
   const design = $("#design");
-  design.hidden = !r.design;
-  if (r.design) {
-    design.innerHTML = r.design.fromClientPhoto
-      ? `<b>Your style photo.</b> Closest in our catalogue: ${escapeHtml(r.design.name.toLowerCase())}.`
-      : `<b>${escapeHtml(r.design.name)}.</b> ${escapeHtml(r.design.reason)}`;
-  }
+  design.hidden = !r.style;
+  if (r.style) design.innerHTML = r.style.fromClientPhoto ? "<b>Sewn like your photo.</b>" : `<b>Style: ${escapeHtml(r.style.name)}.</b>`;
   const estimate = $("#estimate");
   const e = r.estimate;
   estimate.hidden = !e;
@@ -336,3 +375,4 @@ function escapeHtml(s) {
 }
 
 loadGallery();
+loadStyles();

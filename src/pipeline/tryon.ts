@@ -5,8 +5,8 @@ import { segment, type Segment } from "../meta/sam.ts";
 import { editImage, sizeFor } from "../meta/image.ts";
 import {
   askJson,
-  designPrompt,
-  designSchema,
+  measurePrompt,
+  measureSchema,
   expectedFor,
   refusalMessage,
   sceneSchema,
@@ -35,8 +35,10 @@ export interface TryOnRequest {
   maxAttempts?: number;
   /** Hand Muse Image the room's light map as one more picture, so it lights the curtains like the room (default on). */
   lightHint?: boolean;
-  /** Let the designer step pick a catalogue style when the client sent no style photo (default on). */
-  design?: boolean;
+  /** The catalogue style the client picked (default "straight"); a style photo, when sent, takes its place. */
+  styleId?: string;
+  /** Measure the openings for a fabric estimate (default on). */
+  measure?: boolean;
   /** Also hand Muse Image the salon's sample photo of the chosen style, when there is one (default off). */
   styleSamples?: boolean;
   // Switches for the ablation in eval/RESULTS.md; every stage is on by default.
@@ -78,8 +80,8 @@ export interface TryOnReport {
   reason?: string;
   clientMessage?: string;
   scene?: SceneFacts;
-  /** The style the designer step chose, with its reason for the client. */
-  design?: { style: string; name: string; reason: string; sample: boolean; fromClientPhoto: boolean };
+  /** The style the curtains were made in: a catalogue style the client picked, or their own style photo. */
+  style?: { id: string; name: string; sample: boolean; fromClientPhoto: boolean };
   /** How much fabric the curtains would take, from the openings measured on the photo. */
   estimate?: FabricEstimate;
   attempts: AttemptReport[];
@@ -124,7 +126,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   report.before = room.jpeg;
 
   // Read the scene and segment the room at the same time: none of these depend on each other.
-  const [scene, windowsAll, oldCurtains, oldTulle, inFront] = await Promise.all([
+  const [scene, windowsAll, oldCurtains, oldTulle, inFront, measured] = await Promise.all([
     askJson(
       checker,
       "scene check",
@@ -142,6 +144,9 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // Lamps and chandeliers hang in the air in front of the window wall: a curtain or rod drawn over them is pasted
     // around them.
     Promise.all(["lamp", "chandelier"].map((phrase) => segment(room, phrase, costs))).then((r) => r.flat()),
+    (req.measure ?? true)
+      ? askJson(checker, "measure", measurePrompt(), [{ caption: "Room photo:", dataUrl: room.dataUrl }], measureSchema, costs).catch(() => undefined)
+      : Promise.resolve(undefined),
   ]);
   report.scene = scene;
 
@@ -187,36 +192,22 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   const fabricColour = fabricLab(fabric.rgb, fabric.width, fabric.height);
   const references = [room.dataUrl, fabric.dataUrl, ...(style ? [style.dataUrl] : [])];
 
-  // The designer step: Muse Spark Open picks a style from the catalogue for this room and this fabric (or names the
-  // one closest to the client's own style photo), and measures the openings for a first fabric estimate. A
-  // catalogue style's cut goes into the prompt only when the client sent no style photo.
+  // The style: the one the client picked from the catalogue, unless they sent a photo of the curtains they want.
+  const picked = styleById(req.styleId ?? "straight") ?? styleById("straight")!;
   let chosen: CurtainStyle | undefined;
   let sampleIndex: number | undefined;
-  if (req.design ?? true) {
-    const design = await askJson(
-      checker,
-      "style choice",
-      designPrompt(STYLES, scene, req.wish, Boolean(style)),
-      [
-        { caption: "Room photo:", dataUrl: room.dataUrl },
-        { caption: "Fabric photo:", dataUrl: fabric.dataUrl },
-        ...(style ? [{ caption: "Curtains the client wants:", dataUrl: style.dataUrl }] : []),
-      ],
-      designSchema,
-      costs,
-    );
-    const picked = styleById(design.style.trim()) ?? styleById("straight")!;
-    report.estimate = estimateFabric(picked, design.openings, design.ceiling_cm);
-    if (!style) {
-      chosen = picked;
-      const sample = req.styleSamples ? styleSample(chosen.id) : undefined;
-      if (sample) {
-        references.push((await loadPhoto(sample, 1024)).dataUrl);
-        sampleIndex = references.length;
-      }
+  if (!style) {
+    chosen = picked;
+    const sample = req.styleSamples ? styleSample(chosen.id) : undefined;
+    if (sample) {
+      references.push((await loadPhoto(sample, 1024)).dataUrl);
+      sampleIndex = references.length;
     }
-    report.design = { style: picked.id, name: picked.name, reason: design.reason, sample: sampleIndex !== undefined, fromClientPhoto: Boolean(style) };
   }
+  report.style = style
+    ? { id: "own", name: "Your style photo", sample: false, fromClientPhoto: true }
+    : { id: picked.id, name: picked.name, sample: sampleIndex !== undefined, fromClientPhoto: false };
+  if (measured) report.estimate = estimateFabric(picked, measured.openings, measured.ceiling_cm);
   let lightIndex: number | undefined;
   if (req.lightHint ?? true) {
     const map = lightImage(roomLight(room.rgb, windowMask, room.width, room.height));

@@ -17,7 +17,7 @@ const { values } = parseArgs({
     reuse: { type: "string" },
     attempts: { type: "string" },
     "no-light-hint": { type: "boolean" },
-    "no-design": { type: "boolean" },
+    "style-id": { type: "string" },
     "style-samples": { type: "boolean" },
   },
 });
@@ -32,7 +32,7 @@ const report = await tryOn({
   reuseGenerated: values.reuse ? readFileSync(values.reuse) : undefined,
   maxAttempts: values.attempts ? Number(values.attempts) : undefined,
   lightHint: !values["no-light-hint"],
-  design: !values["no-design"],
+  styleId: values["style-id"],
   styleSamples: values["style-samples"],
 });
 

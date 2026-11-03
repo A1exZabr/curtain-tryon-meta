@@ -209,33 +209,21 @@ export function verdictPasses(v: Verdict, expected: Expected = { tulle: false })
   return v.same_room && v.window_same && v.view_same && v.curtains_on_window && v.fabric_matches && v.realistic && v.score >= 0.6;
 }
 
-export const designSchema = z.object({
-  style: z.string(),
-  reason: z.string().default(""),
+export const measureSchema = z.object({
   openings: z.array(z.object({ width_cm: z.number(), height_cm: z.number() })).catch([]).default([]),
   ceiling_cm: z.number().optional().catch(undefined),
 });
-export type Design = z.infer<typeof designSchema>;
+export type Measure = z.infer<typeof measureSchema>;
 
-/** The designer step: picks the curtain style for this room and fabric from the catalogue. */
-export function designPrompt(styles: { id: string; name: string; suits: string }[], scene: SceneFacts, wish?: string, clientStyle = false): string {
-  const quote = (text: string) => `"${text.replace(/"/g, "'")}"`;
+/** Measures the openings that get curtains and the ceiling from the photo, for a first fabric estimate. */
+export function measurePrompt(): string {
   return [
-    "You are the designer at a curtain salon. The first image is the client's room, the second is the fabric" +
-      (scene.fabric_description ? ` (described from the photo as ${quote(`${scene.fabric_description}, ${scene.fabric_opacity}`)}).` : "."),
-    clientStyle
-      ? "The third image shows the curtains the client wants. Choose the style from this list that is closest to them:"
-      : "Choose the one curtain style from this list that suits this room, its windows and this fabric best:",
-    ...styles.map((s) => `- ${s.id}: ${s.name}. Suits ${s.suits}.`),
-    "Consider the style of the room, the windows (how many, how wide, whether they reach the ceiling or the floor, what stands next to them),",
-    "the height of the ceiling and how heavy the fabric is." +
-      (wish ? ` The client wrote ${quote(wish)}; if that names a style or a way of hanging, follow it.` : ""),
-    "Then measure from the photo, the way a salon's measurer would: each window or glass door that should get curtains, with a row of",
-    "windows side by side or a balcony door's leaves counted as one opening, and the ceiling height. Judge sizes by things of known size",
-    "nearby: an interior door is about 200 cm tall, a chair seat about 45 cm high, a radiator about 50 to 60 cm high, a socket about 30 cm",
-    "above the floor, a ceiling usually 250 to 300 cm high.",
+    "You are the measurer of a curtain salon. The image is the client's room.",
+    "Measure from the photo each window or glass door that should get curtains, with a row of windows side by side or a balcony",
+    "door's leaves counted as one opening, and the ceiling height. Judge sizes by things of known size nearby: an interior door is",
+    "about 200 cm tall, a chair seat about 45 cm high, a radiator about 50 to 60 cm high, a socket about 30 cm above the floor, a ceiling",
+    "usually 250 to 300 cm high.",
     "Answer with JSON only, no other text:",
-    '{ "style": one id from the list, "reason": one short sentence to the client on why this style suits their room,',
-    '  "openings": [{ "width_cm": number, "height_cm": number }], "ceiling_cm": number }',
+    '{ "openings": [{ "width_cm": number, "height_cm": number }], "ceiling_cm": number }',
   ].join("\n");
 }

@@ -13,6 +13,8 @@ export interface CurtainStyle {
   fullness: number;
   /** Hangs from the ceiling rather than from a rod just above the frame. */
   ceiling?: boolean;
+  /** A few words for the client choosing it. */
+  hint: string;
 }
 
 export const STYLES: CurtainStyle[] = [
@@ -22,6 +24,7 @@ export const STYLES: CurtainStyle[] = [
     cut: "floor-length drapes hanging straight from the heading to the floor at both sides of the window, without tiebacks",
     suits: "modern and minimal rooms; works with any fabric",
     fullness: 2,
+    hint: "Hang straight to the floor",
   },
   {
     id: "tiebacks",
@@ -29,6 +32,7 @@ export const STYLES: CurtainStyle[] = [
     cut: "floor-length drapes gathered to the sides at about a third of their height by tiebacks of the same fabric, falling in a soft curve below",
     suits: "classic and cosy rooms, when the window and the view should stay open",
     fullness: 2,
+    hint: "Gathered to the sides with fabric ties",
   },
   {
     id: "holdbacks",
@@ -36,6 +40,7 @@ export const STYLES: CurtainStyle[] = [
     cut: "floor-length drapes swept aside and held by small decorative metal holdbacks fixed to the wall at sill height",
     suits: "classic rooms and heavier fabrics such as velvet",
     fullness: 2,
+    hint: "Swept aside on metal holdbacks",
   },
   {
     id: "rings",
@@ -43,6 +48,7 @@ export const STYLES: CurtainStyle[] = [
     cut: "drapes hung by rings from a round metal rod with finials just above the window, in soft regular folds to the floor",
     suits: "lofts, classic and eclectic rooms; linen and cotton",
     fullness: 2,
+    hint: "Rings on a round rod",
   },
   {
     id: "eyelets",
@@ -50,6 +56,7 @@ export const STYLES: CurtainStyle[] = [
     cut: "drapes with large metal eyelets threaded on a round rod, falling in deep, even waves to the floor",
     suits: "modern rooms; medium and heavy fabrics",
     fullness: 2,
+    hint: "Metal eyelets, deep even waves",
   },
   {
     id: "ceiling-track",
@@ -58,6 +65,7 @@ export const STYLES: CurtainStyle[] = [
     suits: "modern rooms, wide or floor-to-ceiling windows and low ceilings, since it makes the room look taller",
     fullness: 2.5,
     ceiling: true,
+    hint: "Pinch pleats from a ceiling track",
   },
   {
     id: "wave",
@@ -66,6 +74,7 @@ export const STYLES: CurtainStyle[] = [
     suits: "contemporary rooms and rows of windows; light and heavy fabrics alike",
     fullness: 2.2,
     ceiling: true,
+    hint: "Soft waves from a ceiling track",
   },
   {
     id: "one-side",
@@ -73,6 +82,7 @@ export const STYLES: CurtainStyle[] = [
     cut: "a single floor-length drape on one side of each window, gathered back with a tieback, the other side left open",
     suits: "only a window that one of its sides presses against a wall or a corner, so a second drape has no room; furniture in front of a window is not a reason for it",
     fullness: 1.2,
+    hint: "A single drape to one side",
   },
   {
     id: "fold-over",
@@ -80,6 +90,7 @@ export const STYLES: CurtainStyle[] = [
     cut: "drapes whose top edge folds over as a short flap above the heading, gathered with tiebacks at both sides",
     suits: "classic and traditional rooms",
     fullness: 2,
+    hint: "Fold-over top, tied back",
   },
 ];
 

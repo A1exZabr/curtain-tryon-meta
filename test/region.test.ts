@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { close, dilate, dropSmall, erode, frontWindows, mainWindows, windowGroups } from "../src/pipeline/region.ts";
 import { changedOutside } from "../src/pipeline/tryon.ts";
-import { warpByColumns, windowMatch, windowOutline } from "../src/pipeline/align.ts";
+import { edgeKept, warpByColumns, windowMatch, windowOutline } from "../src/pipeline/align.ts";
 import { composite } from "../src/pipeline/composite.ts";
 
 const W = 20, H = 10;
@@ -118,4 +118,15 @@ test("the column warp follows each window's own shift and blends between them", 
   assert.equal(out[(0 * w + 5) * 3], (5 - 2) * 5);
   assert.equal(out[(0 * w + 35) * 3], (35 + 2) * 5);
   assert.equal(out[(0 * w + 20) * 3], 20 * 5);
+});
+
+test("edge check: the same picture keeps its edges, a picture moved by a few pixels loses them", async () => {
+  const w = 200, h = 150;
+  const img = Buffer.alloc(w * h * 3, 200);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if ((Math.floor(x / 10) + Math.floor(y / 10)) % 2) img.fill(40, (y * w + x) * 3, (y * w + x) * 3 + 3);
+  const moved = Buffer.alloc(w * h * 3, 200);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w - 5; x++) img.copy(moved, (y * w + x + 5) * 3, (y * w + x) * 3, (y * w + x) * 3 + 3);
+  const none = new Uint8Array(w * h);
+  assert.ok((await edgeKept(img, img, w, h, none)) > 0.95);
+  assert.ok((await edgeKept(img, moved, w, h, none)) < 0.6);
 });

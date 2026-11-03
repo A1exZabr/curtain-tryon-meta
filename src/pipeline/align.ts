@@ -208,3 +208,33 @@ export function windowOutline(window: Mask, covered: Mask, width: number, height
   const hidden = dilate(covered, width, height, r);
   return outer.map((v, i) => (v && !inner[i] && !hidden[i] ? 1 : 0));
 }
+
+/**
+ * How much of the photo's structure a result kept: of the photo's clear edges outside `skip` (the new curtains),
+ * the share that has an edge of the result within 3 px, on a 768 px copy. A generator that drops a lamp or moves a
+ * chair loses those edges; tone and softness changes don't.
+ */
+export async function edgeKept(original: Buffer, result: Buffer, width: number, height: number, skip: Mask): Promise<number> {
+  const tw = 768;
+  const th = Math.round((tw * height) / width);
+  const a = await grey(original, width, height, tw, th);
+  const b = await grey(result, width, height, tw, th);
+  const s = await scaledMask(dilate(skip, width, height, Math.round(width * 0.01)), width, height, tw, th);
+  const edges = (g: Buffer) => {
+    const m = new Uint8Array(tw * th);
+    for (let y = 1; y < th - 1; y++) for (let x = 1; x < tw - 1; x++) {
+      const i = y * tw + x;
+      if (Math.hypot(g[i + 1]! - g[i - 1]!, g[i + tw]! - g[i - tw]!) > 40) m[i] = 1;
+    }
+    return m;
+  };
+  const ea = edges(a);
+  const eb = dilate(edges(b), tw, th, 3);
+  let total = 0, kept = 0;
+  for (let i = 0; i < ea.length; i++) {
+    if (!ea[i] || (s[i] ?? 0) >= 128) continue;
+    total++;
+    if (eb[i]) kept++;
+  }
+  return total ? kept / total : 1;
+}

@@ -108,6 +108,7 @@ async function runNext(): Promise<void> {
         attempts: report.attempts.map((a) => ({
           mode: a.mode,
           roomDiff: a.geometry.roomDiff,
+          edgesKept: a.geometry.edgesKept,
           windowDiff: a.geometry.windowDiff,
           inside: +a.geometry.curtainsInsideRegion.toFixed(2),
           coverage: +a.geometry.curtainCoverage.toFixed(2),

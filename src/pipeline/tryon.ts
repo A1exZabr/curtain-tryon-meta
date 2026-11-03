@@ -17,13 +17,13 @@ import {
   type SceneFacts,
   type Verdict,
 } from "../meta/vision.ts";
-import { applyAlignment, findAlignment, matchTone, regionMatch, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
+import { applyAlignment, edgeKept, findAlignment, matchTone, regionMatch, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, rgbToLab, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
 import { estimateFabric, STYLES, styleById, styleSample, type CurtainStyle, type FabricEstimate } from "./styles.ts";
 import { closeUps, jpegDataUrl, loadPhoto, rgbToJpeg, toSize, type Photo } from "./images.ts";
-import { allowedRegion, and, area, close, dilate, dropSmall, mainWindows, union, type Mask } from "./region.ts";
+import { allowedRegion, and, area, close, dilate, dropSmall, erode, mainWindows, union, type Mask } from "./region.ts";
 
 export interface TryOnRequest {
   room: Buffer;
@@ -60,7 +60,7 @@ export type Step = "read" | "generate" | "align" | "check" | "done";
 
 export interface AttemptReport {
   alignment: Alignment;
-  geometry: { windowDiff: number; curtainsInsideRegion: number; curtainCoverage: number; tulleKept?: number; roomDiff?: number };
+  geometry: { windowDiff: number; curtainsInsideRegion: number; curtainCoverage: number; tulleKept?: number; roomDiff?: number; edgesKept?: number };
   /** "whole": the generator's own picture was shown; "paste": only its curtains were pasted into the photo. */
   mode?: "whole" | "paste";
   /** Share of the room outside the pasted curtains that the raw generator output changed visibly; ours is 0. */
@@ -102,7 +102,8 @@ export const LIMITS = {
   minInside: 0.8, // share of the new curtains that must lie inside the allowed region
   minCoverage: 0.12, // new curtain area relative to the window area; below it the curtains are missing
   minTulleKept: 0.5, // share of the original tulle still found on the result when the tulle should stay
-  maxRoomDiff: Number(process.env.MAX_ROOM_DIFF ?? 18), // 60th percentile of grey difference over the room outside curtains and windows; at or under it the generator kept the room
+  maxRoomDiff: Number(process.env.MAX_ROOM_DIFF ?? 18), // 60th percentile of grey difference over the room outside curtains and windows
+  minEdgesKept: Number(process.env.MIN_EDGES_KEPT ?? 0.85), // share of the photo's edges (outside curtains and glass) found in the generated picture
 };
 
 export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
@@ -365,7 +366,11 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // and shadows drawn together; only the curtains' colour is pulled to the fabric, with a soft edge.
     const roomArea = dilate(union([newMask, rodMask, oldMask, windowMask], size), room.width, room.height, Math.round(room.width * 0.02)).map((v) => (v ? 0 : 1));
     attempt.geometry.roomDiff = await regionMatch(room.rgb, aligned, room.width, room.height, roomArea, 0.6);
-    if ((req.whole ?? true) && attempt.geometry.roomDiff <= LIMITS.maxRoomDiff) {
+    // A generator can keep the tone and still drop a lamp or move a chair; the photo's edges tell: they must still
+    // be there, within a few pixels.
+    const glass = erode(windowMask, room.width, room.height, Math.round(room.width * 0.012));
+    attempt.geometry.edgesKept = +(await edgeKept(room.rgb, aligned, room.width, room.height, union([newMask, rodMask, oldMask, glass], size))).toFixed(3);
+    if ((req.whole ?? true) && attempt.geometry.roomDiff <= LIMITS.maxRoomDiff && attempt.geometry.edgesKept >= LIMITS.minEdgesKept) {
       const locked = Buffer.from(aligned);
       attempt.colour = lockFabricColour(locked, drapes, fabricColour);
       const whole = await composite(aligned, locked, dilate(drapes, room.width, room.height, grow * 3), room.width, room.height, grow * 6);

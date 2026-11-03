@@ -88,3 +88,39 @@ export function dilate(mask: Mask, width: number, height: number, r: number): Ma
   }
   return out;
 }
+
+export function erode(mask: Mask, width: number, height: number, r: number): Mask {
+  const inverse = mask.map((v) => (v ? 0 : 1));
+  return dilate(inverse, width, height, r).map((v) => (v ? 0 : 1));
+}
+
+/** Dilate then erode: merges fragments a few pixels apart into one solid shape and fills small holes. */
+export function close(mask: Mask, width: number, height: number, r: number): Mask {
+  return erode(dilate(mask, width, height, r), width, height, r);
+}
+
+/** Drops connected pieces smaller than `minArea` pixels (SAM leaves crumbs where curtains peek behind furniture). */
+export function dropSmall(mask: Mask, width: number, height: number, minArea: number): Mask {
+  const out = mask.slice();
+  const seen = new Uint8Array(mask.length);
+  const stack: number[] = [];
+  const piece: number[] = [];
+  for (let start = 0; start < mask.length; start++) {
+    if (!mask[start] || seen[start]) continue;
+    stack.push(start);
+    seen[start] = 1;
+    piece.length = 0;
+    while (stack.length) {
+      const i = stack.pop()!;
+      piece.push(i);
+      const x = i % width;
+      const y = (i - x) / width;
+      if (x > 0 && mask[i - 1] && !seen[i - 1]) { seen[i - 1] = 1; stack.push(i - 1); }
+      if (x < width - 1 && mask[i + 1] && !seen[i + 1]) { seen[i + 1] = 1; stack.push(i + 1); }
+      if (y > 0 && mask[i - width] && !seen[i - width]) { seen[i - width] = 1; stack.push(i - width); }
+      if (y < height - 1 && mask[i + width] && !seen[i + width]) { seen[i + width] = 1; stack.push(i + width); }
+    }
+    if (piece.length < minArea) for (const i of piece) out[i] = 0;
+  }
+  return out;
+}

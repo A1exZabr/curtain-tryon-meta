@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { close, dilate, dropSmall, erode } from "../src/pipeline/region.ts";
+import { changedOutside } from "../src/pipeline/tryon.ts";
+import { composite } from "../src/pipeline/composite.ts";
+
+const W = 20, H = 10;
+const mask = (cells: [number, number][]) => { const m = new Uint8Array(W * H); for (const [x, y] of cells) m[y * W + x] = 1; return m; };
+const count = (m: Uint8Array) => m.reduce((s, v) => s + v, 0);
+
+test("dilate grows a pixel into a square", () => {
+  assert.equal(count(dilate(mask([[5, 5]]), W, H, 1)), 9);
+});
+
+test("erode undoes dilate on a solid block", () => {
+  const block = dilate(mask([[10, 5]]), W, H, 2);
+  assert.equal(count(erode(dilate(block, W, H, 1), W, H, 1)), count(block));
+});
+
+test("close fills a one-pixel gap between two pieces", () => {
+  const two = mask([[4, 5], [5, 5], [7, 5], [8, 5]]);
+  assert.equal(close(two, W, H, 1)[6 + 5 * W], 1);
+});
+
+test("dropSmall removes crumbs and keeps large pieces", () => {
+  const big = dilate(mask([[10, 5]]), W, H, 2); // 25 pixels
+  big[0] = 1; // a one-pixel crumb in the corner
+  const out = dropSmall(big, W, H, 5);
+  assert.equal(out[0], 0);
+  assert.equal(count(out), 25);
+});
+
+test("composite keeps every pixel outside the paste mask byte-for-byte", async () => {
+  const original = Buffer.alloc(W * H * 3, 100);
+  const generated = Buffer.alloc(W * H * 3, 200);
+  const paste = dilate(mask([[10, 5]]), W, H, 1);
+  const out = await composite(original, generated, paste, W, H, 0);
+  for (let i = 0; i < W * H; i++) if (!paste[i]) assert.equal(out[i * 3], 100);
+  assert.equal(out[(5 * W + 10) * 3], 200);
+  assert.equal(changedOutside(original, out, paste), 0);
+});
+
+test("a feathered composite still leaves everything outside the mask untouched", async () => {
+  const original = Buffer.alloc(W * H * 3, 100);
+  const generated = Buffer.alloc(W * H * 3, 200);
+  const paste = dilate(mask([[10, 5]]), W, H, 2);
+  const out = await composite(original, generated, paste, W, H, 3);
+  assert.equal(changedOutside(original, out, paste), 0);
+  for (let i = 0; i < W * H; i++) if (!paste[i]) assert.equal(out[i * 3], 100);
+});

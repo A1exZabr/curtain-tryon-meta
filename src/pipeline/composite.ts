@@ -3,7 +3,7 @@ import type { Mask } from "./region.ts";
 
 /**
  * Takes the generated pixels only inside `paste` and the original pixels everywhere else, with a soft edge of
- * `feather` pixels. Outside the dilated paste mask the output is byte-for-byte the original photo.
+ * about `feather` pixels inside the mask. Outside the mask the output is byte-for-byte the original photo.
  */
 export async function composite(
   original: Buffer,
@@ -25,7 +25,8 @@ export async function composite(
       : hard;
   const out = Buffer.alloc(width * height * 3);
   for (let i = 0; i < width * height; i++) {
-    const alpha = (soft[i] ?? 0) / 255;
+    // The soft edge only fades inward: outside the hard mask alpha is exactly 0.
+    const alpha = paste[i] ? (soft[i] ?? 0) / 255 : 0;
     for (let c = 0; c < 3; c++) {
       const j = i * 3 + c;
       out[j] = alpha === 0 ? original[j]! : Math.round(original[j]! * (1 - alpha) + generated[j]! * alpha);

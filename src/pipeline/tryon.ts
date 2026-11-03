@@ -16,7 +16,7 @@ import { applyAlignment, findAlignment, matchTone, windowMatch, type Alignment }
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, type ColourLock } from "./colour.ts";
 import { jpegDataUrl, loadPhoto, rgbToJpeg, toSize, type Photo } from "./images.ts";
-import { allowedRegion, and, area, dilate, mainWindows, union, type Mask } from "./region.ts";
+import { allowedRegion, and, area, close, dilate, dropSmall, mainWindows, union, type Mask } from "./region.ts";
 
 export interface TryOnRequest {
   room: Buffer;
@@ -179,9 +179,17 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // Pull the curtains' colour back to the fabric's, then paste the new curtains and rod, and wherever the old
     // curtains were (the generator removed them there).
     attempt.colour = lockFabricColour(aligned, newMask, fabricColour);
+    // SAM leaves crumbs where curtains peek out behind furniture; pasted one by one they show as blotches.
+    // Drop the small pieces, merge the rest into solid shapes, then feather the edge.
     const grow = Math.round(room.width * 0.006);
-    const paste = and(dilate(union([newMask, rodMask, oldMask], size), room.width, room.height, grow), region);
-    const final = await composite(room.rgb, aligned, paste, room.width, room.height, grow);
+    const solid = close(
+      dropSmall(union([newMask, rodMask, oldMask], size), room.width, room.height, Math.round(size * 0.002)),
+      room.width,
+      room.height,
+      Math.round(room.width * 0.012),
+    );
+    const paste = and(dilate(solid, room.width, room.height, grow), region);
+    const final = await composite(room.rgb, aligned, paste, room.width, room.height, grow * 2);
     attempt.rawChangedOutside = changedOutside(room.rgb, rawResized, dilate(paste, room.width, room.height, grow * 2));
     const finalJpeg = await rgbToJpeg(final, room.width, room.height);
     report.debug[`paste-${n}`] = await overlay(aligned, room.width, room.height, [

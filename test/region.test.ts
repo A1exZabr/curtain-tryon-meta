@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { close, dilate, dropSmall, erode, mainWindows } from "../src/pipeline/region.ts";
 import { changedOutside } from "../src/pipeline/tryon.ts";
+import { windowMatch, windowOutline } from "../src/pipeline/align.ts";
 import { composite } from "../src/pipeline/composite.ts";
 
 const W = 20, H = 10;
@@ -66,4 +67,31 @@ test("the soft edge starts near the original at the border and is opaque deep in
   assert.ok(out[(30 * w + 10) * 3]! < 125, "border pixel stays close to the original");
   assert.equal(out[(30 * w + 30) * 3], 200);
   assert.equal(out[(30 * w + 9) * 3], 100);
+});
+
+test("the window outline leaves out the glass and whatever the curtains cover", () => {
+  const w = 100, h = 100;
+  const win = new Uint8Array(w * h);
+  for (let y = 30; y < 70; y++) for (let x = 30; x < 70; x++) win[y * w + x] = 1;
+  const covered = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < 20; x++) covered[y * w + x] = 1;
+  const band = windowOutline(win, covered, w, h);
+  assert.equal(band[50 * w + 50], 0, "the middle of the glass is not compared");
+  assert.equal(band[50 * w + 30], 1, "the frame is compared");
+  assert.equal(band[50 * w + 5], 0);
+});
+
+test("a window check with nothing to compare does not fail the attempt", async () => {
+  const w = 64, h = 96;
+  const img = Buffer.alloc(w * h * 3, 120);
+  assert.equal(await windowMatch(img, Buffer.alloc(w * h * 3, 10), w, h, new Uint8Array(w * h)), 0);
+});
+
+test("the window check reads the mask where it is, also low in a tall photo", async () => {
+  const w = 300, h = 600;
+  const a = Buffer.alloc(w * h * 3, 100);
+  const b = Buffer.alloc(w * h * 3, 100);
+  const m = new Uint8Array(w * h);
+  for (let y = 450; y < 560; y++) for (let x = 50; x < 250; x++) { m[y * w + x] = 1; for (let c = 0; c < 3; c++) b[(y * w + x) * 3 + c] = 200; }
+  assert.ok((await windowMatch(a, b, w, h, m)) > 80);
 });

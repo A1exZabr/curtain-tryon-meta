@@ -16,7 +16,7 @@ import {
   type SceneFacts,
   type Verdict,
 } from "../meta/vision.ts";
-import { applyAlignment, findAlignment, matchTone, windowMatch, type Alignment } from "./align.ts";
+import { applyAlignment, findAlignment, matchTone, windowMatch, windowOutline, type Alignment } from "./align.ts";
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
@@ -82,7 +82,7 @@ export interface TryOnReport {
 
 /** Thresholds, kept together so the report can print them. */
 export const LIMITS = {
-  maxWindowDiff: 30, // 40th percentile of grey difference inside the window after alignment (0..255); above it the window moved
+  maxWindowDiff: 40, // 40th percentile of grey difference along the window's outline after alignment (0..255); above it the window moved
   minInside: 0.8, // share of the new curtains that must lie inside the allowed region
   minCoverage: 0.12, // new curtain area relative to the window area; below it the curtains are missing
 };
@@ -234,7 +234,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     const rodMask = union(rods.map((r) => r.mask), size);
     const newArea = area(newMask);
     attempt.geometry = {
-      windowDiff: await windowMatch(room.rgb, aligned, room.width, room.height, windowMask),
+      windowDiff: await windowMatch(room.rgb, aligned, room.width, room.height, windowOutline(windowMask, union([newMask, rodMask, oldMask], size), room.width, room.height)),
       curtainsInsideRegion: newArea ? area(and(newMask, region)) / newArea : 0,
       curtainCoverage: newArea / Math.max(1, area(windowMask)),
     };
@@ -306,13 +306,16 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   return finish();
 }
 
-/** SAM's "window" misses floor-to-ceiling glass; "large window" and "glass door" catch most of what it misses. */
+/**
+ * Windows and glass doors are looked for together: through a balcony door SAM's "window" finds the balcony's
+ * windows behind it, and the curtains belong around the door. "large window" catches floor-to-ceiling glass that
+ * neither phrase finds.
+ */
 async function findWindows(room: Photo, costs: CostLog): Promise<Segment[]> {
-  for (const phrase of ["window", "large window", "glass door"]) {
-    const found = mainWindows(await segment(room, phrase, costs), room.width, room.height);
-    if (found.length) return found;
-  }
-  return [];
+  const [windows, doors] = await Promise.all([segment(room, "window", costs), segment(room, "glass door", costs)]);
+  const found = mainWindows([...windows, ...doors], room.width, room.height);
+  if (found.length) return found;
+  return mainWindows(await segment(room, "large window", costs), room.width, room.height);
 }
 
 /** Share of pixels outside `mask` whose colour differs by more than a JPEG's noise (mean channel delta > 16). */

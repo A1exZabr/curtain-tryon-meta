@@ -37,7 +37,7 @@ test("a wrong fabric on the first attempt becomes a fabric correction on the sec
 });
 
 test("geometry failures map to their own corrections", () => {
-  const fixes = refinements(attempt({ geometry: { windowDiff: 40, curtainsInsideRegion: 0.65, curtainCoverage: 0.05 } }), scene);
+  const fixes = refinements(attempt({ geometry: { windowDiff: 60, curtainsInsideRegion: 0.65, curtainCoverage: 0.05 } }), scene);
   assert.equal(fixes.length, 3);
 });
 

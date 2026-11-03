@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import type { Mask } from "./region.ts";
+import { dilate, erode, type Mask } from "./region.ts";
 
 export interface Alignment {
   scale: number;
@@ -9,6 +9,18 @@ export interface Alignment {
   residual: number;
   /** Same measure before alignment, for the report. */
   before: number;
+}
+
+/**
+ * A mask scaled to w x h, one byte per pixel. sharp hands back three channels for one-channel raw input unless
+ * told otherwise; reading that buffer as one channel samples the wrong pixels.
+ */
+async function scaledMask(mask: Mask, width: number, height: number, w: number, h: number): Promise<Buffer> {
+  return sharp(Buffer.from(mask.map((v) => (v ? 255 : 0))), { raw: { width, height, channels: 1 } })
+    .resize(w, h, { fit: "fill" })
+    .extractChannel(0)
+    .raw()
+    .toBuffer();
 }
 
 async function grey(rgb: Buffer, width: number, height: number, w: number, h: number): Promise<Buffer> {
@@ -35,10 +47,7 @@ export async function findAlignment(
     const th = Math.round((tw * height) / width);
     const a = await grey(original, width, height, tw, th);
     const b = await grey(result, width, height, tw, th);
-    const use = await sharp(Buffer.from(compare.map((v) => (v ? 255 : 0))), { raw: { width, height, channels: 1 } })
-      .resize(tw, th, { fit: "fill" })
-      .raw()
-      .toBuffer();
+    const use = await scaledMask(compare, width, height, tw, th);
     const k = tw / width;
     const cost = (scale: number, dx: number, dy: number): number => {
       // Sample b at the position that maps onto pixel (x, y) of a: b(x') with x = cx + scale * (x' - cx) + dx.
@@ -124,23 +133,29 @@ export async function applyAlignment(result: Buffer, width: number, height: numb
 }
 
 /**
- * Is the window where it was? Compares grey levels inside the original window mask after alignment and returns
- * the 40th percentile of the absolute difference (0..255). New curtains cover part of the window and differ a
- * lot there, but as long as the rest of the glass and frame match, the 40th percentile stays low; a window that
- * moved or was redrawn differs everywhere.
+ * Whether the window stayed where it was: the grey difference along the window's outline (its frame and the wall
+ * right at it) after alignment, at the 40th percentile. The glass itself is left out: the generator may brighten
+ * or blur the view, but the view is never pasted, so only the outline matters for where the curtains land.
+ * `outline` comes from windowOutline. Returns 0 when nothing of the outline is visible to compare.
  */
-export async function windowMatch(original: Buffer, aligned: Buffer, width: number, height: number, windowMask: Mask): Promise<number> {
+export async function windowMatch(original: Buffer, aligned: Buffer, width: number, height: number, outline: Mask): Promise<number> {
   const tw = 512;
   const th = Math.round((tw * height) / width);
   const a = await grey(original, width, height, tw, th);
   const b = await grey(aligned, width, height, tw, th);
-  const m = await sharp(Buffer.from(windowMask.map((v) => (v ? 255 : 0))), { raw: { width, height, channels: 1 } })
-    .resize(tw, th, { fit: "fill" })
-    .raw()
-    .toBuffer();
+  const m = await scaledMask(outline, width, height, tw, th);
   const diffs: number[] = [];
   for (let i = 0; i < tw * th; i++) if ((m[i] ?? 0) >= 128) diffs.push(Math.abs((a[i] ?? 0) - (b[i] ?? 0)));
-  if (diffs.length === 0) return 255;
+  if (diffs.length < 50) return 0;
   diffs.sort((x, y) => x - y);
   return diffs[Math.floor(diffs.length * 0.4)]!;
+}
+
+/** The band along the window's border, minus whatever the new curtains and rod cover. */
+export function windowOutline(window: Mask, covered: Mask, width: number, height: number): Mask {
+  const r = Math.max(2, Math.round(width * 0.012));
+  const outer = dilate(window, width, height, r);
+  const inner = erode(window, width, height, r);
+  const hidden = dilate(covered, width, height, r);
+  return outer.map((v, i) => (v && !inner[i] && !hidden[i] ? 1 : 0));
 }

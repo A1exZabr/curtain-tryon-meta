@@ -270,7 +270,11 @@ function showResult(r) {
   if (r.design) design.innerHTML = `<b>${escapeHtml(r.design.name)}.</b> ${escapeHtml(r.design.reason)}`;
   const last = r.attempts?.at(-1);
   $("#seg").src = r.debug?.segmentation ?? "";
-  $("#paste").src = r.debug?.[`paste-${r.attempts?.length}`] ?? "";
+  // An attempt that failed before pasting has no paste picture; show the last one there is.
+  const pastes = Object.keys(r.debug ?? {}).filter((k) => k.startsWith("paste-")).sort();
+  const paste = pastes.length ? r.debug[pastes.at(-1)] : "";
+  $("#paste").src = paste;
+  $("#paste").closest("figure").hidden = !paste;
   $("#light").src = r.debug?.light ?? "";
   $("#light").closest("figure").hidden = !r.debug?.light;
   const facts = [];

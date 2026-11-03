@@ -119,6 +119,96 @@
       "width": 1600,
       "height": 1067,
       "notes": "dim living room, one window with plants on the sill and a lace valance on a rod, strong backlight, interior very dark (hard exposure), looks like an ordinary phone/camera snapshot"
+    },
+    {
+      "id": "room-13",
+      "url": "https://images.unsplash.com/photo-1782353863064-838f7200ba61?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/ESFqmq3V4_o",
+      "author": "Josh Lemmon",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 1334,
+      "notes": "empty living room in an ordinary house, BAY window of three double-hung windows (wide gridded centre plus two angled sides, right one cropped at the edge), mini blinds pulled up at the top, no curtains; a second small window in an arched alcove at the back, floor vent under the bay, bright winter daylight, HDR real-estate shot, landscape"
+    },
+    {
+      "id": "room-14",
+      "url": "https://images.unsplash.com/photo-1534595038511-9f219fe0c979?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/Wv65tpVIdDg",
+      "author": "Emily Wang",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 1333,
+      "notes": "attic living room, THREE slanted roof windows in the sloped ceiling (left one cropped at the edge), slat blinds rolled up at the top of each, no curtains, strong backlight with blown-out glass, floor lamps standing in front of the windows, landscape; tricky: no wall to hang curtains on, the opening is on a slope"
+    },
+    {
+      "id": "room-15",
+      "url": "https://images.unsplash.com/photo-1589793242170-029606c12c84?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/4dPT83csTic",
+      "author": "Kira Porotikova",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 3000,
+      "notes": "open balcony door seen from a dark room, leading to a glazed loggia (panel blocks outside), patterned sheer tulle on the right, dark drape with a swag across the top and down the left, warm sunset light, tight crop on the doorway with little room visible, portrait"
+    },
+    {
+      "id": "room-16",
+      "url": "https://images.unsplash.com/photo-1659949294512-95abb6aebf6c?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/fGYktEP9bOI",
+      "author": "Timur Pulatov",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 2728,
+      "notes": "kitchen, one tilt-and-turn window in a deep oak-lined reveal, dark zebra (day-night) roller blind fully down inside the reveal, sash tilted open, low warm sun striping through the blind, dark grey walls, window cropped at the right edge, iPhone photo, portrait"
+    },
+    {
+      "id": "room-17",
+      "url": "https://images.unsplash.com/photo-1675705552912-18f9052a8af4?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/b0YxfiRwGfY",
+      "author": "Andrey K",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 3000,
+      "notes": "old six-pane wooden window with peeling paint, RADIATOR directly under the window, floral cotton curtains open on a metal rod with clip rings, interior very dark against a bright green garden (hard exposure), portrait"
+    },
+    {
+      "id": "room-18",
+      "url": "https://images.unsplash.com/photo-1704040686510-b747ff423ebb?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/aObxGPf7J1o",
+      "author": "Ariel Domenden",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 1333,
+      "notes": "large living room, one wide five-panel window, floor-length heavy beige linen drapes with a Greek-key border on a black rod, big sectional sofa in front hides the bottom of the window, overcast daylight plus recessed ceiling lights, staged real-estate shot, landscape"
+    },
+    {
+      "id": "room-19",
+      "url": "https://images.unsplash.com/photo-1763478958800-3a2a6321f645?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/iSO22I2l5uc",
+      "author": "Shoham Avisrur",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 1333,
+      "notes": "child's bedroom, one tall window fully covered by a ceiling-mounted white sheer tulle, a fabric bed canopy hangs in front of the left part of the window, bright daylight, toys and kids' furniture, landscape; tricky: canopy overlaps the curtain area"
+    },
+    {
+      "id": "room-20",
+      "url": "https://images.unsplash.com/photo-1634207521799-5616b235ac74?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/-bujWNpNegs",
+      "author": "Mitchell Luo",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 1334,
+      "notes": "small bedroom, TWO sliding aluminium windows meeting in the CORNER (narrow one on the left wall, wider one on the back wall), white roller blinds rolled up at the top, no curtains, bright even daylight, lit bedside lamp, real-estate shot, landscape; tricky: curtains have to turn the corner"
+    },
+    {
+      "id": "room-21",
+      "url": "https://images.unsplash.com/photo-1757742690834-aa581b9f53b2?w=2000&q=85",
+      "source_page": "https://unsplash.com/photos/4YhNRgL59Fc",
+      "author": "Christian Lue",
+      "license": "Unsplash License",
+      "width": 2000,
+      "height": 1333,
+      "notes": "empty room in an old city apartment, one WIDE window of three tall casements with transoms (middle sash open), panelled apron under the sill, radiator on the side wall, no curtains, soft daylight with warm film-like colour, landscape"
     }
   ],
   "fabrics": [

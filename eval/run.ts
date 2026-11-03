@@ -37,6 +37,17 @@ const JOBS: { id: string; room: string; fabric: string; style?: string; wish?: s
   { id: "09", room: "room-09", fabric: "fabric-04" },
   { id: "11", room: "room-11", fabric: "fabric-05", style: "style-01" },
   { id: "12", room: "room-12", fabric: "fabric-01" },
+  // Added on 2026-11-03 for variety: a bay, an attic, a balcony door with tulle, a kitchen roller blind, an old
+  // window over a radiator, heavy existing drapes, a child's room under tulle, a corner pair, a wide casement.
+  { id: "13", room: "room-13", fabric: "fabric-02" },
+  { id: "14", room: "room-14", fabric: "fabric-01" },
+  { id: "15", room: "room-15", fabric: "fabric-03" },
+  { id: "16", room: "room-16", fabric: "fabric-05" },
+  { id: "17", room: "room-17", fabric: "fabric-04" },
+  { id: "18", room: "room-18", fabric: "fabric-02" },
+  { id: "19", room: "room-19", fabric: "fabric-01" },
+  { id: "20", room: "room-20", fabric: "fabric-03" },
+  { id: "21", room: "room-21", fabric: "fabric-04" },
   { id: "13-no-room", room: "fabric-02", fabric: "fabric-04", expect: "rejected_input" },
 ];
 

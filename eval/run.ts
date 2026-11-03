@@ -149,7 +149,7 @@ const lines = [
   `- A photo with no room in it was refused before generation: ${refusedRight.length ? "yes" : "no"}.`,
   ...(whole
     ? [
-        `- The client sees Muse Image's own picture, aligned on the window. It is shown only if the rest of the room differs from the photo by at most ${LIMITS.maxRoomDiff} of 255 and at least ${pct(LIMITS.minEdgesKept)} of the photo's edges outside the curtains and windows are still there (${pct(LIMITS.minEdgesKeptCalm)} when the difference is ${LIMITS.calmRoomDiff} or less); otherwise it is made again.`,
+        `- The client sees Muse Image's own picture, aligned on the window. It is shown only if the rest of the room differs from the photo by at most ${LIMITS.maxRoomDiff} of 255 and at least ${pct(LIMITS.minEdgesKept)} of the photo's edges outside the curtains and windows are still there (fewer when the room is closer: ${pct(LIMITS.minEdgesKeptCalm)} at a difference of ${LIMITS.calmRoomDiff} or less); otherwise it is made again.`,
         `- In the accepted pictures: median **${pct(mid(shown.map((g) => g.edgesKept ?? 0)))}** of the photo's edges kept, median room difference **${mid(shown.map((g) => g.roomDiff ?? 0))}** of 255.`,
         `- Generations thrown away because the generator changed the room: **${roomChanged} of ${allAttempts.length}**.`,
       ]

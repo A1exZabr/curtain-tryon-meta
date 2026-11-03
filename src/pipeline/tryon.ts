@@ -353,7 +353,17 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // A tulle the client has stays where it hangs: a generator told to keep it sometimes takes it down and invents
     // the view behind it.
     if (tulleOriginal && area(tulleOriginal) > 0) {
-      attempt.geometry.tulleKept = area(and(tulleOriginal, dilate(tulleMask, room.width, room.height, Math.round(room.width * 0.01)))) / area(tulleOriginal);
+      // SAM doesn't always find a tulle behind new drapes of a pale fabric; a tulle whose pixels are still the photo's
+      // is there all the same.
+      let same = 0, all = 0;
+      for (let i = 0; i < size; i += 3) {
+        if (!tulleOriginal[i]) continue;
+        all++;
+        const now = rgbToLab(aligned[i * 3]!, aligned[i * 3 + 1]!, aligned[i * 3 + 2]!);
+        if (labDistance(now, rgbToLab(room.rgb[i * 3]!, room.rgb[i * 3 + 1]!, room.rgb[i * 3 + 2]!)) < 12) same++;
+      }
+      const found = area(and(tulleOriginal, dilate(tulleMask, room.width, room.height, Math.round(room.width * 0.01)))) / area(tulleOriginal);
+      attempt.geometry.tulleKept = Math.max(found, all ? same / all : 0);
       if (attempt.geometry.tulleKept < LIMITS.minTulleKept) {
         attempt.why = `the tulle on the window was taken down (${(attempt.geometry.tulleKept * 100).toFixed(0)}% left)`;
         continue;

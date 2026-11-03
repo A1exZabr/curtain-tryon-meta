@@ -1,0 +1,28 @@
+{
+  "name": "curtain-tryon-meta",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Curtain try-on engine on Meta models: SAM 3.1 finds the window, Muse Image draws the curtains, Muse Spark checks the photos.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "tryon": "tsx src/cli.ts",
+    "eval": "tsx eval/run.ts",
+    "serve": "tsx web/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@meta-sam/parser": "^0.1.0",
+    "sharp": "^0.35.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

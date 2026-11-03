@@ -1,0 +1,7 @@
+node_modules/
+data/
+out/
+.env
+*.log
+.DS_Store
+ops/with-env.sh

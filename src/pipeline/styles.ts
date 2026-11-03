@@ -58,7 +58,7 @@ export const STYLES: CurtainStyle[] = [
     id: "one-side",
     name: "One drape to the side",
     cut: "a single floor-length drape on one side of each window, gathered back with a tieback, the other side left open",
-    suits: "narrow windows, a window next to a wall or in a corner, a window behind a desk or a bed",
+    suits: "only a window that one of its sides presses against a wall or a corner, so a second drape has no room; furniture in front of a window is not a reason for it",
   },
   {
     id: "fold-over",

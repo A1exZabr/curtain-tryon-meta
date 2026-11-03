@@ -1,0 +1,22 @@
+# Demo deployment: one container behind the shared Caddy (network work-services_apps).
+# Secrets (META_MODEL_API_KEY, BASETEN_API_KEY) live in .env next to this file, never in git.
+services:
+  curtain-tryon:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "8080"
+      SPEND_CAP_USD_PER_DAY: "${SPEND_CAP_USD_PER_DAY:-10}"
+      SPEND_FILE: /data/spend.json
+      GALLERY_DIR: /app/gallery
+    volumes:
+      - ./data:/data
+      - ./gallery:/app/gallery:ro
+    mem_limit: 1g
+    cpus: 1.5
+    networks: [apps]
+networks:
+  apps:
+    external: true
+    name: work-services_apps

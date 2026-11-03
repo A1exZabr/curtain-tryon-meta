@@ -12,7 +12,7 @@ import {
   type SceneFacts,
   type Verdict,
 } from "../meta/vision.ts";
-import { applyAlignment, findAlignment, matchTone, type Alignment } from "./align.ts";
+import { applyAlignment, findAlignment, matchTone, windowMatch, type Alignment } from "./align.ts";
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, type ColourLock } from "./colour.ts";
 import { jpegDataUrl, loadPhoto, rgbToJpeg, toSize, type Photo } from "./images.ts";
@@ -28,11 +28,17 @@ export interface TryOnRequest {
   maxAttempts?: number;
   /** Development only: reuse a generated image instead of paying for a new one. */
   reuseGenerated?: Buffer;
+  /** Called as the pipeline moves on, so a page can show which model is working. */
+  onStep?: (step: Step, attempt: number) => void;
 }
+
+export type Step = "read" | "generate" | "align" | "check" | "done";
 
 export interface AttemptReport {
   alignment: Alignment;
-  geometry: { windowKept: number; curtainsInsideRegion: number; curtainCoverage: number };
+  geometry: { windowDiff: number; curtainsInsideRegion: number; curtainCoverage: number };
+  /** Share of the room outside the pasted curtains that the raw generator output changed visibly; ours is 0. */
+  rawChangedOutside?: number;
   colour?: ColourLock;
   verdict?: Verdict;
   passed: boolean;
@@ -45,6 +51,8 @@ export interface TryOnReport {
   clientMessage?: string;
   scene?: SceneFacts;
   attempts: AttemptReport[];
+  /** The room photo at working size (JPEG), the "before" for a comparison slider. */
+  before?: Buffer;
   /** Final picture (JPEG) when accepted, or the best failed one for the debug view. */
   image?: Buffer;
   debug: Record<string, Buffer>;
@@ -56,8 +64,8 @@ export interface TryOnReport {
 
 /** Thresholds, kept together so the report can print them. */
 export const LIMITS = {
-  minWindowKept: 0.85, // share of the window found on the result that sits where the original window was
-  minInside: 0.85, // share of the new curtains that must lie inside the allowed region
+  maxWindowDiff: 30, // 40th percentile of grey difference inside the window after alignment (0..255); above it the window moved
+  minInside: 0.8, // share of the new curtains that must lie inside the allowed region
   minCoverage: 0.12, // new curtain area relative to the window area; below it the curtains are missing
 };
 
@@ -67,15 +75,19 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   const checker = req.checker ?? DEFAULT_CHECKER;
   const report: TryOnReport = { status: "failed", attempts: [], debug: {}, costs: costs.items, totalUsd: 0, ms: 0, checker };
   const finish = (): TryOnReport => {
+    req.onStep?.("done", report.attempts.length);
     report.totalUsd = costs.totalUsd;
     report.ms = Date.now() - started;
     return report;
   };
 
+  const step = (name: Step, attempt = 0) => req.onStep?.(name, attempt);
+  step("read");
   const room = await loadPhoto(req.room);
   const fabric = await loadPhoto(req.fabric, 1024);
   const style = req.style ? await loadPhoto(req.style, 1024) : undefined;
   const size = room.width * room.height;
+  report.before = room.jpeg;
 
   // Read the scene and segment the room at the same time: none of these depend on each other.
   const [scene, windowsAll, oldCurtains] = await Promise.all([
@@ -90,7 +102,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       sceneSchema,
       costs,
     ),
-    segment(room, "window", costs),
+    findWindows(room, costs),
     segment(room, "curtains", costs),
   ]);
   report.scene = scene;
@@ -112,9 +124,8 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   const windowMask = union(windows.map((w) => w.mask), size);
   const oldMask = union(oldCurtains.map((c) => c.mask), size);
   const region = allowedRegion(windows, oldCurtains, room.width, room.height);
-  // The window with its frame: what alignment compares, and where the window must still be on the result.
+  // The window with its frame: what alignment compares.
   const windowFrame = dilate(windowMask, room.width, room.height, Math.round(room.width * 0.03));
-  const windowNear = dilate(windowMask, room.width, room.height, Math.round(room.width * 0.015));
   report.debug.segmentation = await overlay(room.rgb, room.width, room.height, [
     { mask: region, colour: [255, 200, 0], alpha: 0.18 },
     { mask: windowMask, colour: [0, 140, 255], alpha: 0.45 },
@@ -127,39 +138,41 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   const maxAttempts = req.maxAttempts ?? 2;
 
   for (let n = 1; n <= maxAttempts; n++) {
+    step("generate", n);
     const generated =
       n === 1 && req.reuseGenerated
         ? req.reuseGenerated
         : await editImage(references, prompt, sizeFor(room.width, room.height), costs);
-    const resized = matchTone(room.rgb, await toSize(generated, room.width, room.height), region);
+    step("align", n);
+    const rawResized = await toSize(generated, room.width, room.height);
+    const resized = matchTone(room.rgb, rawResized, region);
     const alignment = await findAlignment(room.rgb, resized, room.width, room.height, windowFrame);
     const aligned = matchTone(room.rgb, await applyAlignment(resized, room.width, room.height, alignment), region);
     const alignedJpeg = await rgbToJpeg(aligned, room.width, room.height);
     report.debug[`generated-${n}`] = alignedJpeg;
     const attempt: AttemptReport = {
       alignment,
-      geometry: { windowKept: 0, curtainsInsideRegion: 0, curtainCoverage: 0 },
+      geometry: { windowDiff: 0, curtainsInsideRegion: 0, curtainCoverage: 0 },
       passed: false,
     };
     report.attempts.push(attempt);
 
+    step("check", n);
     const alignedPhoto = { dataUrl: jpegDataUrl(alignedJpeg), width: room.width, height: room.height };
-    const [newWindows, newCurtains, rods] = await Promise.all([
-      segment(alignedPhoto, "window", costs),
+    const [newCurtains, rods] = await Promise.all([
       segment(alignedPhoto, "curtains", costs),
       segment(alignedPhoto, "curtain rod", costs),
     ]);
-    const newWindowMask = union(newWindows.map((w) => w.mask), size);
     const newMask = union(newCurtains.map((c) => c.mask), size);
     const rodMask = union(rods.map((r) => r.mask), size);
     const newArea = area(newMask);
     attempt.geometry = {
-      windowKept: area(and(newWindowMask, windowNear)) / Math.max(1, area(newWindowMask)),
+      windowDiff: await windowMatch(room.rgb, aligned, room.width, room.height, windowMask),
       curtainsInsideRegion: newArea ? area(and(newMask, region)) / newArea : 0,
       curtainCoverage: newArea / Math.max(1, area(windowMask)),
     };
-    if (attempt.geometry.windowKept < LIMITS.minWindowKept) {
-      attempt.why = `the window moved or changed shape (${(attempt.geometry.windowKept * 100).toFixed(0)}% in place)`;
+    if (attempt.geometry.windowDiff > LIMITS.maxWindowDiff) {
+      attempt.why = `the window moved or was redrawn (difference ${attempt.geometry.windowDiff} of 255)`;
       continue;
     }
 
@@ -169,6 +182,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     const grow = Math.round(room.width * 0.006);
     const paste = and(dilate(union([newMask, rodMask, oldMask], size), room.width, room.height, grow), region);
     const final = await composite(room.rgb, aligned, paste, room.width, room.height, grow);
+    attempt.rawChangedOutside = changedOutside(room.rgb, rawResized, dilate(paste, room.width, room.height, grow * 2));
     const finalJpeg = await rgbToJpeg(final, room.width, room.height);
     report.debug[`paste-${n}`] = await overlay(aligned, room.width, room.height, [
       { mask: paste, colour: [0, 220, 120], alpha: 0.4 },
@@ -206,6 +220,29 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
 
   report.reason = report.attempts.at(-1)?.why ?? "no attempt passed";
   return finish();
+}
+
+/** SAM's "window" misses floor-to-ceiling glass; "large window" and "glass door" catch most of what it misses. */
+async function findWindows(room: Photo, costs: CostLog): Promise<Segment[]> {
+  for (const phrase of ["window", "large window", "glass door"]) {
+    const found = mainWindows(await segment(room, phrase, costs), room.width, room.height);
+    if (found.length) return found;
+  }
+  return [];
+}
+
+/** Share of pixels outside `mask` whose colour differs by more than a JPEG's noise (mean channel delta > 16). */
+export function changedOutside(original: Buffer, other: Buffer, mask: Mask): number {
+  let changed = 0;
+  let total = 0;
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i]) continue;
+    total++;
+    const j = i * 3;
+    const d = (Math.abs(original[j]! - other[j]!) + Math.abs(original[j + 1]! - other[j + 1]!) + Math.abs(original[j + 2]! - other[j + 2]!)) / 3;
+    if (d > 16) changed++;
+  }
+  return total ? changed / total : 0;
 }
 
 export function editPrompt(

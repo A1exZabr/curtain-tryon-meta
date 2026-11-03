@@ -17,12 +17,14 @@
   },
   "dependencies": {
     "@meta-sam/parser": "^0.1.0",
+    "geoip-lite": "^2.0.3",
     "sharp": "^0.35.5",
+    "tsx": "4.23.15",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/geoip-lite": "^1.4.4",
     "@types/node": "^26.6.6",
-    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }

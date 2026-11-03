@@ -1,0 +1,211 @@
+{
+  "rooms": [
+    {
+      "id": "room-01",
+      "url": "https://images.unsplash.com/photo-1780672823863-1f40d9c6435d?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/7yFSdK-UwGE",
+      "author": "Taylor Friehl",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 2400,
+      "notes": "bedroom, one double-hung window beside the bed (cropped at the left edge), no curtains, bright daylight, striped wallpaper, portrait"
+    },
+    {
+      "id": "room-02",
+      "url": "https://images.unsplash.com/photo-1653463174231-3911539cfdd9?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/2pia6OAe5rA",
+      "author": "Annie Spratt",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 1067,
+      "notes": "corner of a room with a small desk, TWO tall sash windows on adjacent walls, no curtains or blinds, overcast daylight"
+    },
+    {
+      "id": "room-03",
+      "url": "https://images.unsplash.com/photo-1672586420444-1a1a492e7bd6?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/u3aN79sbzYs",
+      "author": "Evan Wise",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 2396,
+      "notes": "small living room, TWO windows (large gridded window plus a corner window), no curtains (only raised slat blinds at the top), warm low sun, portrait"
+    },
+    {
+      "id": "room-04",
+      "url": "https://images.unsplash.com/photo-1634672050277-16639332c727?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/KMcOLSZuTe0",
+      "author": "Greg Rosenke",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 1067,
+      "notes": "kitchen, wide double window over the sink, no curtains, daylight, window cropped at the right edge"
+    },
+    {
+      "id": "room-05",
+      "url": "https://images.unsplash.com/photo-1645241910531-d32735b412a2?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/Ooxx6Fya5oE",
+      "author": "Cole Ankney",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 1065,
+      "notes": "living-room corner with a window seat, TWO windows (large one plus a side window), no curtains, winter daylight"
+    },
+    {
+      "id": "room-06",
+      "url": "https://images.unsplash.com/photo-1651739083989-b470abadb966?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/2aeqJ5sLO-0",
+      "author": "Annie Spratt",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 2400,
+      "notes": "home office desk in front of a sash window at dusk, no curtains, very dim interior lit by a desk lamp (evening/dim case), portrait"
+    },
+    {
+      "id": "room-07",
+      "url": "https://images.unsplash.com/photo-1569803856743-4c36a6281f87?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/UXbwE090Vgs",
+      "author": "Killian Pham",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 2400,
+      "notes": "hotel bedroom, window with a sheer curtain panel and a dark drape on the left, city view, daylight, unmade bed in foreground, portrait; looks like a phone photo"
+    },
+    {
+      "id": "room-08",
+      "url": "https://images.unsplash.com/photo-1753791913941-efa7de4e1b5c?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/jvv2e1NJc9s",
+      "author": "Jetts Thanatip",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 2704,
+      "notes": "living room, sofa in front of floor-to-ceiling corner windows fully covered by sheer white tulle curtains, daylight, portrait; shot on iPhone 13 per the Unsplash page"
+    },
+    {
+      "id": "room-09",
+      "url": "https://images.unsplash.com/photo-1634657870093-8fdd8260381d?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/SLtceGWbBJs",
+      "author": "Viktor Gudaev",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 2393,
+      "notes": "old kitchen window at sunset, yellow printed cafe (half-height) curtain plus patterned side tulle, one sash open, warm evening light, film scan, portrait"
+    },
+    {
+      "id": "room-10",
+      "url": "https://images.unsplash.com/photo-1633369918397-ea852fe4e091?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/Oy5okUtWh2M",
+      "author": "Alice Kotlyarenko",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 2401,
+      "notes": "bedroom with tall glass balcony French doors and a second window, half-height lace sheer on the glass, wooden shutters, balcony railing visible, daylight, portrait; a person's shoulder is visible under the duvet in the foreground (no face)"
+    },
+    {
+      "id": "room-11",
+      "url": "https://images.pexels.com/photos/7546217/pexels-photo-7546217.jpeg?auto=compress&w=1600",
+      "source_page": "https://www.pexels.com/photo/room-with-couch-7546217/",
+      "author": "Max Vakhtbovych",
+      "license": "Pexels License",
+      "width": 1600,
+      "height": 1068,
+      "notes": "living room with large floor-to-ceiling windows, sheer tulle plus mauve drapes with a beige hem band, corner sofa, bright daylight, real-estate style shot"
+    },
+    {
+      "id": "room-12",
+      "url": "https://images.unsplash.com/photo-1645213156430-2727475eda97?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/yswUPxTOqeQ",
+      "author": "Razi Abramovich",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 1067,
+      "notes": "dim living room, one window with plants on the sill and a lace valance on a rod, strong backlight, interior very dark (hard exposure), looks like an ordinary phone/camera snapshot"
+    }
+  ],
+  "fabrics": [
+    {
+      "id": "fabric-01",
+      "url": "https://images.unsplash.com/photo-1528458909336-e7a0adfed0a5?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/xTaOPMa6wAE",
+      "author": "Annie Spratt",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 1242,
+      "notes": "plain beige-grey linen weave, flat and evenly lit, fills the whole frame"
+    },
+    {
+      "id": "fabric-02",
+      "url": "https://images.pexels.com/photos/7232401/pexels-photo-7232401.jpeg?auto=compress&w=1600",
+      "source_page": "https://www.pexels.com/photo/crumpled-green-fabric-7232401/",
+      "author": "Artem Podrez",
+      "license": "Pexels License",
+      "width": 1600,
+      "height": 900,
+      "notes": "olive green velvet with soft folds and sheen, fills the whole frame"
+    },
+    {
+      "id": "fabric-03",
+      "url": "https://images.pexels.com/photos/4611614/pexels-photo-4611614.jpeg?auto=compress&w=1600",
+      "source_page": "https://www.pexels.com/photo/close-up-photo-of-retro-tapestry-fabric-4611614/",
+      "author": "Magda Ehlers",
+      "license": "Pexels License",
+      "width": 1600,
+      "height": 1067,
+      "notes": "vintage floral tapestry / jacquard upholstery fabric (pink, purple, blue, green on cream), flat, patterned, slight vignette in the corners"
+    },
+    {
+      "id": "fabric-04",
+      "url": "https://images.unsplash.com/photo-1720394493759-dd94fcaa3907?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/DUCy4A1NTjw",
+      "author": "gretta vosper",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 900,
+      "notes": "woven striped curtain fabric, vertical rust / grey / cream herringbone stripes, flat, fills the whole frame"
+    },
+    {
+      "id": "fabric-05",
+      "url": "https://images.unsplash.com/photo-1650562892776-ae12fdb549ba?w=1600&q=85",
+      "source_page": "https://unsplash.com/photos/djLWeK1i4kw",
+      "author": "Jael Coon",
+      "license": "Unsplash License",
+      "width": 1600,
+      "height": 2390,
+      "notes": "sheer pale-pink tulle / organza with soft folds, shallow depth of field, portrait"
+    }
+  ],
+  "styles": [
+    {
+      "id": "style-01",
+      "url": "https://images.pexels.com/photos/8295332/pexels-photo-8295332.jpeg?auto=compress&w=1600",
+      "source_page": "https://www.pexels.com/photo/a-window-with-white-and-light-pink-curtain-8295332/",
+      "author": "gorden murah surabaya",
+      "license": "Pexels License",
+      "width": 1600,
+      "height": 2400,
+      "notes": "eyelet (grommet) curtains in dusty-pink jacquard on a metal rod with a white sheer behind and a tie-back, product-style shot against a wall, portrait",
+      "style": "grommet"
+    },
+    {
+      "id": "style-02",
+      "url": "https://images.pexels.com/photos/6487950/pexels-photo-6487950.jpeg?auto=compress&w=1600",
+      "source_page": "https://www.pexels.com/photo/home-interior-with-bed-near-window-and-board-with-photos-6487950/",
+      "author": "Max Vakhtbovych",
+      "license": "Pexels License",
+      "width": 1600,
+      "height": 1090,
+      "notes": "flat-fold Roman blind in grey linen, partly raised, over a window in a bedroom, daylight",
+      "style": "roman"
+    },
+    {
+      "id": "style-03",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/31/Curtain.agr.jpg",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Curtain.agr.jpg",
+      "author": "ArnoldReinhold",
+      "license": "CC BY-SA 3.0",
+      "width": 1225,
+      "height": 1524,
+      "notes": "champagne satin-weave curtains with a clear three-finger pinch-pleat heading under a ceiling cove; tight crop on the curtain, plain snapshot, low-light indoor colours, portrait",
+      "style": "pinch-pleat"
+    }
+  ]
+}

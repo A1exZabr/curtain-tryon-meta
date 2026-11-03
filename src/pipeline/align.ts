@@ -122,3 +122,25 @@ export async function applyAlignment(result: Buffer, width: number, height: numb
   }
   return out;
 }
+
+/**
+ * Is the window where it was? Compares grey levels inside the original window mask after alignment and returns
+ * the 40th percentile of the absolute difference (0..255). New curtains cover part of the window and differ a
+ * lot there, but as long as the rest of the glass and frame match, the 40th percentile stays low; a window that
+ * moved or was redrawn differs everywhere.
+ */
+export async function windowMatch(original: Buffer, aligned: Buffer, width: number, height: number, windowMask: Mask): Promise<number> {
+  const tw = 512;
+  const th = Math.round((tw * height) / width);
+  const a = await grey(original, width, height, tw, th);
+  const b = await grey(aligned, width, height, tw, th);
+  const m = await sharp(Buffer.from(windowMask.map((v) => (v ? 255 : 0))), { raw: { width, height, channels: 1 } })
+    .resize(tw, th, { fit: "fill" })
+    .raw()
+    .toBuffer();
+  const diffs: number[] = [];
+  for (let i = 0; i < tw * th; i++) if ((m[i] ?? 0) >= 128) diffs.push(Math.abs((a[i] ?? 0) - (b[i] ?? 0)));
+  if (diffs.length === 0) return 255;
+  diffs.sort((x, y) => x - y);
+  return diffs[Math.floor(diffs.length * 0.4)]!;
+}

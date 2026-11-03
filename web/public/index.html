@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CurtainBot try-on on Meta models</title>
+  <meta name="description" content="Send a photo of your room and a photo of a fabric, and see those curtains on your own window. Built on SAM 3.1, Muse Image, Muse Spark Open and Muse Voice Transcribe.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">CurtainBot <span>try-on on Meta models</span></a>
+    <nav>
+      <a href="#try">Try it</a>
+      <a href="#how">How it works</a>
+      <a href="https://github.com/A1exZabr/curtain-tryon-meta">Code</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <h1>See the fabric on your own window.</h1>
+        <p class="lede">A curtain salon's client picks a fabric from a swatch and has to imagine it at home. Send a photo of the room and a photo of the fabric, and get the same room with those curtains. Only the curtains change: every other pixel of the photo stays as it was.</p>
+        <p class="built">CurtainBot, a try-on bot for curtain salons, existed before the hackathon. This try-on engine on Meta models was built during it.</p>
+      </div>
+      <figure class="hero-compare">
+        <div class="compare" id="hero-compare" aria-label="Before and after comparison">
+          <img class="compare-after" alt="Room with the new curtains">
+          <div class="compare-before-wrap"><img class="compare-before" alt="Room before"></div>
+          <div class="tape" role="slider" tabindex="0" aria-label="Drag to compare before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>
+        </div>
+        <figcaption>
+          <span class="cap-before">Before</span>
+          <span id="hero-caption"></span>
+          <span class="cap-after">After</span>
+        </figcaption>
+        <div class="swatches" id="gallery" aria-label="Examples"></div>
+      </figure>
+    </section>
+
+    <section class="try" id="try">
+      <h2>Try it on your room</h2>
+      <p class="hint">Photos from a phone are fine. Take the room so the whole window is in the frame, and the fabric close up in daylight.</p>
+      <form id="form">
+        <div class="drops">
+          <label class="drop" data-for="room">
+            <input type="file" name="room" accept="image/*" required>
+            <img alt="">
+            <strong>Your room</strong>
+            <span>A photo with the window in it</span>
+          </label>
+          <label class="drop" data-for="fabric">
+            <input type="file" name="fabric" accept="image/*" required>
+            <img alt="">
+            <strong>Your fabric</strong>
+            <span>A close-up of the swatch</span>
+          </label>
+          <label class="drop optional" data-for="style">
+            <input type="file" name="style" accept="image/*">
+            <img alt="">
+            <strong>How it's sewn</strong>
+            <span>Optional: a photo of curtains you like</span>
+          </label>
+        </div>
+        <div class="wish">
+          <label for="wish">Anything else? Type it or say it.</label>
+          <div class="wish-row">
+            <input id="wish" name="wish" maxlength="300" placeholder="Floor length, a bit lighter than the swatch">
+            <button type="button" id="mic" class="mic" aria-pressed="false">Hold to speak</button>
+          </div>
+          <p class="mic-note" id="mic-note" hidden></p>
+        </div>
+        <button type="submit" class="go" id="go">Hang the curtains</button>
+        <p class="form-error" id="form-error" role="alert" hidden></p>
+      </form>
+
+      <ol class="steps" id="steps" aria-live="polite">
+        <li data-step="read"><b>Read the photos</b><span>Muse Spark Open checks there is a window and a fabric, and reads the fabric's colour</span></li>
+        <li data-step="segment"><b>Find the window</b><span>SAM 3.1 outlines the window and any curtains already there</span></li>
+        <li data-step="generate"><b>Sew the curtains</b><span>Muse Image hangs curtains of your fabric on that window</span></li>
+        <li data-step="align"><b>Lay them over your photo</b><span>The result is aligned on the window, matched to your photo's light, and only the curtains are pasted in</span></li>
+        <li data-step="check"><b>Check the result</b><span>SAM 3.1 finds the new curtains, Muse Spark Open compares them with your fabric</span></li>
+      </ol>
+
+      <div class="result" id="result" hidden>
+        <div class="compare" id="result-compare" aria-label="Your result">
+          <img class="compare-after" alt="Your room with the new curtains">
+          <div class="compare-before-wrap"><img class="compare-before" alt="Your room before"></div>
+          <div class="tape" role="slider" tabindex="0" aria-label="Drag to compare before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>
+        </div>
+        <p class="verdict" id="verdict"></p>
+        <details class="inside">
+          <summary>What the models saw</summary>
+          <div class="inside-grid">
+            <figure><img id="seg" alt="Window and allowed area found by SAM 3.1"><figcaption>Blue: the window SAM 3.1 found. Yellow: where curtains may hang. Red: curtains that were there before.</figcaption></figure>
+            <figure><img id="paste" alt="Pixels taken from the generated image"><figcaption>Green: the only pixels taken from Muse Image. Everything else is your original photo.</figcaption></figure>
+          </div>
+          <dl class="facts" id="facts"></dl>
+          <table class="costs" id="costs"><caption>Every model call for this try-on</caption><thead><tr><th>Call</th><th>Time</th><th>Cost</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
+        </details>
+      </div>
+    </section>
+
+    <section class="how" id="how">
+      <h2>How it works</h2>
+      <div class="how-cols">
+        <p>Image generators are good at curtains and bad at leaving everything else alone. Asked to change one thing, they redraw the whole frame: furniture shifts, the view outside changes, colours drift. A salon can't charge for that.</p>
+        <p>So the generator never gets the last word. SAM 3.1 decides where curtains may go, Muse Image only supplies the curtains, and the engine pastes them into the original photo. Every pixel outside the curtains is the client's own photo. The fabric's colour is measured on the swatch and the curtains are pulled back to it, keeping their folds and shadows.</p>
+        <p>Two checks frame the generation. Before it, Muse Spark Open, Meta's open-weight model, refuses a photo with no window or no fabric, for free, and tells the client what to send instead. After it, the engine checks the window hasn't moved and the curtains stay in their area, and Muse Spark Open compares them with the fabric. A result that fails is generated again, and the client only ever sees one that passed.</p>
+      </div>
+      <div class="numbers" id="numbers"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Made by ZabSoft LLC, Batumi, Georgia, for the Meta Global AI Developer Hackathon. Photos you send go to Meta's and Baseten's APIs for your try-on; this demo doesn't store them.</p>
+  </footer>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

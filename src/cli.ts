@@ -33,8 +33,9 @@ const report = await tryOn({
 const out = values.out!;
 mkdirSync(out, { recursive: true });
 if (report.image) writeFileSync(`${out}/result.jpg`, report.image);
+if (report.before) writeFileSync(`${out}/before.jpg`, report.before);
 for (const [name, jpeg] of Object.entries(report.debug)) writeFileSync(`${out}/${name}.jpg`, jpeg);
-const { image, debug, ...summary } = report;
+const { image, debug, before, ...summary } = report;
 writeFileSync(`${out}/report.json`, JSON.stringify(summary, null, 2));
 console.log(JSON.stringify(summary, null, 2));
 console.log(`status ${report.status}, $${report.totalUsd.toFixed(4)}, ${(report.ms / 1000).toFixed(1)} s; spent today $${spentToday().toFixed(4)}`);

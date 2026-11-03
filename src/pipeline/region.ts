@@ -13,8 +13,8 @@ export function mainWindows(windows: Segment[], width: number, height: number): 
 
 /**
  * Where curtains are allowed to be: for each window, from a little above the frame (where a rod hangs) down to
- * the bottom of the photo, and a third of the window's width out to each side. Existing curtains are added too,
- * since they have to be replaced wherever they hang.
+ * the bottom of the photo, and 60% of the window's width out to each side (rods usually run wider than the
+ * frame). Existing curtains are added too, since they have to be replaced wherever they hang.
  */
 export function allowedRegion(
   windows: Segment[],
@@ -26,8 +26,8 @@ export function allowedRegion(
   for (const w of windows) {
     const ww = w.box.x2 - w.box.x1;
     const wh = w.box.y2 - w.box.y1;
-    const left = Math.max(0, Math.floor(w.box.x1 - ww * 0.35));
-    const right = Math.min(width, Math.ceil(w.box.x2 + ww * 0.35));
+    const left = Math.max(0, Math.floor(w.box.x1 - ww * 0.6));
+    const right = Math.min(width, Math.ceil(w.box.x2 + ww * 0.6));
     const top = Math.max(0, Math.floor(w.box.y1 - Math.max(wh * 0.15, height * 0.04)));
     for (let y = top; y < height; y++) region.fill(1, y * width + left, y * width + right);
   }

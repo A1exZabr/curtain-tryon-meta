@@ -30,11 +30,11 @@ async function grey(rgb: Buffer, width: number, height: number, w: number, h: nu
 }
 
 /**
- * The generator redraws the whole frame and often zooms or shifts it: by up to about 15%, more than a fine search
- * can cover at once. This finds the scale and shift that best lay the result over the original, comparing only the
- * pixels in `compare` (the window and its frame, which must not move). A wide search on a 128 px thumbnail, then
- * narrower ones at 256 and 512 px. A scale stuck at the edge of the range meant a picture laid on askew, which then
- * read as a changed room and a washed-out one.
+ * The generator redraws the whole frame and often zooms or shifts it. This finds the scale and shift that best lay
+ * the result over the original, comparing only the pixels in `compare` (the window and its frame, which must not
+ * move): a search within 6% of zoom on a 256 px thumbnail, then a fine one at 512 px. When the best scale ends up
+ * at the edge of that range, the picture may be zoomed further, and a wider search (up to 15%) is run from a
+ * 128 px thumbnail; it is taken only if it fits clearly better, since a wide search also finds false matches.
  */
 export async function findAlignment(
   original: Buffer,
@@ -45,7 +45,24 @@ export async function findAlignment(
   /** Search near this alignment instead of from scratch; `before` is then the cost at it, on the same pixels. */
   around?: Alignment,
 ): Promise<Alignment> {
-  const levels = [128, 256, 512];
+  const narrow = await search(original, result, width, height, compare, [256, 512], around
+    ? { s: [around.scale - 0.03, around.scale + 0.03, 0.01], d: Math.round(width * 0.02), around }
+    : { s: [0.94, 1.06, 0.01], d: Math.round(width * 0.04) });
+  if (around || Math.abs(narrow.scale - 1) < 0.055) return narrow;
+  const wide = await search(original, result, width, height, compare, [128, 256, 512], { s: [0.86, 1.16, 0.01], d: Math.round(width * 0.1) });
+  return wide.residual < narrow.residual * 0.9 ? { ...wide, before: narrow.before } : narrow;
+}
+
+async function search(
+  original: Buffer,
+  result: Buffer,
+  width: number,
+  height: number,
+  compare: Mask,
+  levels: number[],
+  first: { s: number[]; d: number; around?: Alignment },
+): Promise<Alignment> {
+  const around = first.around;
   let best = { scale: around?.scale ?? 1, dx: around?.dx ?? 0, dy: around?.dy ?? 0, cost: Infinity };
   let before = 0;
   for (const [level, tw] of levels.entries()) {
@@ -73,18 +90,17 @@ export async function findAlignment(
       }
       return n > tw * th * 0.01 ? sum / n : Infinity;
     };
-    if (level === 0 && !around) before = cost(1, 0, 0);
-    if (level === levels.length - 1 && around) before = cost(around.scale, around.dx, around.dy);
+    if (level === levels.length - 1) before = around ? cost(around.scale, around.dx, around.dy) : cost(1, 0, 0);
+    const last = level === levels.length - 1;
     const span =
       level === 0
-        ? around
-          ? { s: [around.scale - 0.03, around.scale + 0.03, 0.01], d: Math.round(width * 0.02) }
-          : { s: [0.86, 1.16, 0.01], d: Math.round(width * 0.1) }
-        : level === 1
-          ? { s: [best.scale - 0.015, best.scale + 0.015, 0.005], d: Math.round(3 / k) }
-          : { s: [best.scale - 0.008, best.scale + 0.008, 0.002], d: Math.round(2 / k) };
+        ? { s: first.s, d: first.d }
+        : last
+          ? { s: [best.scale - 0.008, best.scale + 0.008, 0.002], d: Math.round(2 / k) }
+          : { s: [best.scale - 0.015, best.scale + 0.015, 0.005], d: Math.round(3 / k) };
     const stepD = Math.max(1, Math.round(1 / k));
     const centre = level === 0 ? { dx: around?.dx ?? 0, dy: around?.dy ?? 0 } : { dx: best.dx, dy: best.dy };
+    best = { ...best, cost: Infinity };
     for (let scale = span.s[0]!; scale <= span.s[1]! + 1e-9; scale += span.s[2]!) {
       for (let dy = centre.dy - span.d; dy <= centre.dy + span.d; dy += stepD) {
         for (let dx = centre.dx - span.d; dx <= centre.dx + span.d; dx += stepD) {

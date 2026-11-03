@@ -17,7 +17,7 @@ import {
   type SceneFacts,
   type Verdict,
 } from "../meta/vision.ts";
-import { applyAlignment, edgeKept, findAlignment, matchTone, regionMatch, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
+import { applyAlignment, coveredBox, cropRgb, edgeKept, findAlignment, matchLocalTone, matchTone, outsideBox, regionMatch, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, rgbToLab, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
@@ -253,6 +253,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // With several windows each is also aligned on its own frame, searching near the overall alignment; where that
     // fits clearly better, the picture bends to it (warpByColumns), so curtains land on their own windows.
     let placed: Buffer;
+    let used: Alignment[] = [alignment];
     if (windows.length >= 2) {
       const anchors: { x: number; al: Alignment }[] = [];
       let local = 0;
@@ -264,11 +265,15 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
         anchors.push({ x: (w.box.x1 + w.box.x2) / 2, al: better ? own : alignment });
       }
       alignment.localWindows = local;
+      if (local) used = anchors.map((a) => a.al);
       placed = local ? warpByColumns(resized, room.width, room.height, anchors) : await applyAlignment(resized, room.width, room.height, alignment);
     } else {
       placed = await applyAlignment(resized, room.width, room.height, alignment);
     }
-    const aligned = matchTone(room.rgb, placed, region);
+    const box = coveredBox(room.width, room.height, used);
+    const uncovered = outsideBox(room.width, room.height, box);
+    const toneOut = union([region, uncovered], size);
+    const aligned = matchLocalTone(room.rgb, matchTone(room.rgb, placed, toneOut), toneOut, room.width, room.height);
     const alignedJpeg = await rgbToJpeg(aligned, room.width, room.height);
     report.debug[`generated-${n}`] = alignedJpeg;
     const attempt: AttemptReport = {
@@ -369,12 +374,18 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // the photo's, and pasting them shows: a skew, a cut hem, a halo. When the generator kept the room (the room
     // outside curtains and windows matches the photo after alignment), its own picture is shown, curtains, light
     // and shadows drawn together; only the curtains' colour is pulled to the fabric, with a soft edge.
-    const roomArea = dilate(union([newMask, rodMask, oldMask, windowMask], size), room.width, room.height, Math.round(room.width * 0.02)).map((v) => (v ? 0 : 1));
+    const roomArea = dilate(union([newMask, rodMask, oldMask, windowMask, uncovered], size), room.width, room.height, Math.round(room.width * 0.02)).map((v) => (v ? 0 : 1));
     attempt.geometry.roomDiff = await regionMatch(room.rgb, aligned, room.width, room.height, roomArea, 0.6);
     // A generator can keep the tone and still drop a lamp or move a chair; the photo's edges tell: they must still
     // be there, within a few pixels.
     const glass = erode(windowMask, room.width, room.height, Math.round(room.width * 0.012));
-    attempt.geometry.edgesKept = +(await edgeKept(room.rgb, aligned, room.width, room.height, union([newMask, rodMask, oldMask, glass], size))).toFixed(3);
+    const border = dilate(uncovered, room.width, room.height, Math.round(room.width * 0.01));
+    attempt.geometry.edgesKept = +(await edgeKept(room.rgb, aligned, room.width, room.height, union([newMask, rodMask, oldMask, glass, border], size))).toFixed(3);
+    const kept = ((box.x2 - box.x1) * (box.y2 - box.y1)) / size;
+    if ((req.whole ?? true) && kept < 0.75) {
+      attempt.why = `the generator zoomed in too far (${Math.round(kept * 100)}% of the photo left)`;
+      continue;
+    }
     if ((req.whole ?? true) && (attempt.geometry.roomDiff > LIMITS.maxRoomDiff || attempt.geometry.edgesKept < LIMITS.minEdgesKept)) {
       attempt.why = `the generator changed the room (${Math.round(attempt.geometry.edgesKept * 100)}% of the photo's edges kept, difference ${attempt.geometry.roomDiff})`;
       continue;
@@ -383,14 +394,21 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       const locked = Buffer.from(aligned);
       attempt.colour = lockFabricColour(locked, drapes, fabricColour);
       const whole = await composite(aligned, locked, dilate(drapes, room.width, room.height, grow * 3), room.width, room.height, grow * 6);
-      const wholeJpeg = await rgbToJpeg(whole, room.width, room.height);
+      // Both pictures are cut to what the generator really drew (see coveredBox), so the slider compares like with like.
+      const bw = box.x2 - box.x1, bh = box.y2 - box.y1;
+      const full = bw === room.width && bh === room.height;
+      const shownAfter = full ? whole : cropRgb(whole, room.width, box);
+      const shownBefore = full ? room.rgb : cropRgb(room.rgb, room.width, box);
+      const wholeJpeg = await rgbToJpeg(shownAfter, bw, bh);
+      const beforeJpeg = full ? room.jpeg : await rgbToJpeg(shownBefore, bw, bh);
       report.image = wholeJpeg;
+      report.before = beforeJpeg;
       attempt.mode = "whole";
       [attempt.verdict, attempt.passed] = await judge(checker, scene, [
-        { caption: "Original room:", dataUrl: room.dataUrl },
+        { caption: "Original room:", dataUrl: full ? room.dataUrl : jpegDataUrl(beforeJpeg) },
         { caption: "Result:", dataUrl: jpegDataUrl(wholeJpeg) },
         { caption: "Fabric:", dataUrl: fabric.dataUrl },
-        ...(await closeUps(room.rgb, whole, room.width, room.height)).map((dataUrl) => ({ caption: "Close-up of the result:", dataUrl })),
+        ...(await closeUps(shownBefore, shownAfter, bw, bh)).map((dataUrl) => ({ caption: "Close-up of the result:", dataUrl })),
       ], costs);
       if (attempt.passed) {
         report.status = "accepted";

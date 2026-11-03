@@ -107,7 +107,11 @@ export const LIMITS = {
   minCoverage: 0.12, // new curtain area relative to the window area; below it the curtains are missing
   minTulleKept: 0.5, // share of the original tulle still found on the result when the tulle should stay
   maxRoomDiff: Number(process.env.MAX_ROOM_DIFF ?? 18), // 60th percentile of grey difference over the room outside curtains and windows
-  minEdgesKept: Number(process.env.MIN_EDGES_KEPT ?? 0.85), // share of the photo's edges (outside curtains and glass) found in the generated picture
+  minEdgesKept: Number(process.env.MIN_EDGES_KEPT ?? 0.85),
+  // A room that matches the photo this closely (difference at most 8 of 255) loses edges mostly to texture the
+  // generator redrew (wallpaper, wood grain, blinds), not to a missing lamp; it needs fewer of them.
+  minEdgesKeptCalm: 0.75,
+  calmRoomDiff: 8, // share of the photo's edges (outside curtains and glass) found in the generated picture
 };
 
 export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
@@ -402,7 +406,8 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       attempt.why = `the generator zoomed in too far (${Math.round(kept * 100)}% of the photo left)`;
       continue;
     }
-    if ((req.whole ?? true) && (attempt.geometry.roomDiff > LIMITS.maxRoomDiff || attempt.geometry.edgesKept < LIMITS.minEdgesKept)) {
+    const minEdges = attempt.geometry.roomDiff <= LIMITS.calmRoomDiff ? LIMITS.minEdgesKeptCalm : LIMITS.minEdgesKept;
+    if ((req.whole ?? true) && (attempt.geometry.roomDiff > LIMITS.maxRoomDiff || attempt.geometry.edgesKept < minEdges)) {
       attempt.why = `the generator changed the room (${Math.round(attempt.geometry.edgesKept * 100)}% of the photo's edges kept, difference ${attempt.geometry.roomDiff})`;
       continue;
     }
@@ -666,7 +671,7 @@ export function refinements(attempt: AttemptReport, scene: SceneFacts): string[]
   const out = new Set<string>();
   const defects = new Set(attempt.verdict?.defects ?? []);
   const g = attempt.geometry;
-  if ((g.edgesKept !== undefined && g.edgesKept < LIMITS.minEdgesKept) || (g.roomDiff !== undefined && g.roomDiff > LIMITS.maxRoomDiff)) {
+  if ((g.edgesKept !== undefined && g.edgesKept < (g.roomDiff !== undefined && g.roomDiff <= LIMITS.calmRoomDiff ? LIMITS.minEdgesKeptCalm : LIMITS.minEdgesKept)) || (g.roomDiff !== undefined && g.roomDiff > LIMITS.maxRoomDiff)) {
     out.add("The first try changed the room: keep every object, lamp and piece of furniture where it is, the camera, the framing and the zoom exactly as in image 1, and add only the curtains.");
   }
   if (g.windowDiff > LIMITS.maxWindowDiff) {

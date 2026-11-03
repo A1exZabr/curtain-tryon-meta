@@ -308,7 +308,13 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       const cleaned = dropSmall(close(inTulle, room.width, room.height, Math.round(room.width * 0.003)), room.width, room.height, Math.round(size * 0.0005));
       drapes = union([newMask.map((v, i) => (v && !tulleOriginal[i] ? 1 : 0)), cleaned], size);
     }
-    const rodMask = union([...rods, ...tracks].map((r) => r.mask), size);
+    // A rod or a track is thin. SAM's "curtain track" sometimes hands back a whole band of ceiling or cornice above
+    // the curtains, and pasting that brings the generator's lighter ceiling in as a glow over them: pieces taller
+    // than 4% of the photo are left out.
+    const rodMask = union(
+      [...rods, ...tracks].filter((r) => r.box.y2 - r.box.y1 <= room.height * 0.04).map((r) => r.mask),
+      size,
+    );
     const newArea = area(newMask);
     attempt.geometry = {
       windowDiff: await windowMatch(room.rgb, aligned, room.width, room.height, windowOutline(windowMask, union([drapes, rodMask, oldDrapes], size), room.width, room.height)),
@@ -342,17 +348,19 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
         .toBuffer();
     }
     // SAM leaves crumbs where curtains peek out behind furniture; pasted one by one they show as blotches.
-    // Drop the small pieces, merge the rest into solid shapes, then feather the edge.
-    const grow = Math.round(room.width * 0.006);
+    // Drop the small pieces and merge what is close together into solid shapes, then soften the edge.
+    // The margin is kept to a few pixels: anything wider pastes the generator's own background around the curtains,
+    // lighter and softer than the photo's, and shows as a halo, worst under the hems where the merging also fills
+    // the gaps between folds.
+    const grow = Math.max(2, Math.round(room.width * 0.0015));
     const solid = close(
       dropSmall(union([drapes, rodMask, replaced], size), room.width, room.height, Math.round(size * 0.002)),
       room.width,
       room.height,
-      Math.round(room.width * 0.012),
+      Math.round(room.width * 0.005),
     );
-    // Grown by the whole feather width, so the soft edge falls just outside the curtain and the curtain's own edge
-    // is fully opaque (a half-transparent edge shows the old background through it).
-    const paste = and(dilate(solid, room.width, room.height, grow * 2), region).map((v, i) => (v && !keepOut[i] ? 1 : 0));
+    // Grown by the feather width, so the soft edge falls on the curtain's border and its body stays opaque.
+    const paste = and(dilate(solid, room.width, room.height, grow), region).map((v, i) => (v && !keepOut[i] ? 1 : 0));
     const final = await composite(room.rgb, aligned, paste, room.width, room.height, grow * 2);
     attempt.rawChangedOutside = changedOutside(room.rgb, rawResized, dilate(paste, room.width, room.height, grow * 2));
     const finalJpeg = await rgbToJpeg(final, room.width, room.height);

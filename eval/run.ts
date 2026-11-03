@@ -10,7 +10,15 @@ interface Photo { id: string; url: string; source_page: string; author: string; 
 interface Set { rooms: Photo[]; fabrics: Photo[]; styles: Photo[] }
 
 const { values } = parseArgs({
-  options: { only: { type: "string" }, parallel: { type: "string", default: "3" }, checker: { type: "string" }, out: { type: "string", default: "out/eval" } },
+  options: {
+    only: { type: "string" },
+    parallel: { type: "string", default: "3" },
+    checker: { type: "string" },
+    out: { type: "string", default: "out/eval" },
+    // Which stages run, for the ablation: raw (Muse Image and the checker only), paste, light, design, full.
+    variant: { type: "string", default: "full" },
+    results: { type: "string", default: "eval/RESULTS.md" },
+  },
 });
 const set = JSON.parse(readFileSync("eval/photos.json", "utf8")) as Set;
 const byId = new Map([...set.rooms, ...set.fabrics, ...set.styles].map((p) => [p.id, p]));
@@ -45,6 +53,16 @@ async function fetchPhoto(id: string): Promise<Buffer> {
   return buffer;
 }
 
+// Each variant adds one stage to the one before it.
+const STAGES = {
+  raw: { paste: false, lightHint: false, relight: false, design: false, retryFixes: false },
+  paste: { lightHint: false, relight: false, design: false, retryFixes: false },
+  light: { design: false, retryFixes: false },
+  design: { retryFixes: false },
+  full: {},
+};
+if (!(values.variant in STAGES)) throw new Error(`unknown variant ${values.variant}`);
+
 const only = values.only?.split(",");
 const jobs = JOBS.filter((j) => !only || only.includes(j.id) || only.includes(j.room));
 const results: { job: (typeof JOBS)[number]; report?: Omit<TryOnReport, "image" | "debug" | "before">; error?: string }[] = [];
@@ -59,6 +77,7 @@ async function runJob(job: (typeof JOBS)[number]): Promise<void> {
       style: job.style ? await fetchPhoto(job.style) : undefined,
       wish: job.wish,
       checker: values.checker === "spark" ? "spark" : values.checker === "spark-open" ? "spark-open" : undefined,
+      ...STAGES[values.variant as keyof typeof STAGES],
     });
     if (report.image) writeFileSync(`${dir}/result.jpg`, report.image);
     if (report.before) writeFileSync(`${dir}/before.jpg`, report.before);
@@ -97,12 +116,14 @@ const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
 const lines = [
   "# Evaluation results",
   "",
-  `Run on ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC with \`npm run eval\`, checker: ${results[0]?.report?.checker ?? "?"}.`,
+  `Run on ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC with \`npm run eval -- --variant ${values.variant}\`, checker: ${results[0]?.report?.checker ?? "?"}.`,
   "Photos come from Unsplash, Pexels and Wikimedia Commons under their free licences; see `eval/photos.json` for authors and links.",
   "",
   `- Accepted try-ons: **${accepted.length} of ${real.length}** (${pct(accepted.length / Math.max(1, real.length))}), ${firstTry} on the first attempt.`,
   `- A photo with no room in it was refused before generation: ${refusedRight.length ? "yes" : "no"}.`,
-  `- Pixels of the room outside the curtains changed by the engine: **0** (by construction: they are copied from the original).`,
+  values.variant === "raw"
+    ? "- Pixels of the room outside the curtains changed: not measured in this variant, the generator's picture is shown as it comes."
+    : `- Pixels of the room outside the curtains changed by the engine: **0** (by construction: they are copied from the original).`,
   `- The same, if the raw Muse Image output were shown instead: **${pct(rawMean)}** of the room on average.`,
   `- Cost per accepted try-on: **$${(allCost / Math.max(1, accepted.length)).toFixed(3)}** (all calls of all runs, failures included, divided by accepted ones).`,
   `- Median time of an accepted try-on: **${median.toFixed(0)} s**.`,
@@ -116,6 +137,15 @@ const lines = [
   }),
   "",
 ];
-writeFileSync("eval/RESULTS.md", lines.join("\n"));
+writeFileSync(values.results, lines.join("\n"));
+writeFileSync(`${values.out}/headline.json`, JSON.stringify({
+  variant: values.variant,
+  accepted: accepted.length,
+  of: real.length,
+  firstTry,
+  rawChanged: rawMean,
+  costPerAccepted: allCost / Math.max(1, accepted.length),
+  medianSeconds: median,
+}, null, 2));
 console.log(lines.slice(4, 11).join("\n"));
 console.log(`spent today $${spentToday().toFixed(3)}`);

@@ -38,6 +38,13 @@ export interface TryOnRequest {
   design?: boolean;
   /** Also hand Muse Image the salon's sample photo of the chosen style, when there is one (default off). */
   styleSamples?: boolean;
+  // Switches for the ablation in eval/RESULTS.md; every stage is on by default.
+  /** Paste only the curtains into the original photo. Off: the generator's picture is judged as it comes. */
+  paste?: boolean;
+  /** Relight the pasted curtains to the room's light map. */
+  relight?: boolean;
+  /** Tell a second attempt what went wrong with the first. */
+  retryFixes?: boolean;
   /** Development only: reuse a generated image instead of paying for a new one. */
   reuseGenerated?: Buffer;
   /** Called as the pipeline moves on, so a page can show which model is working. */
@@ -193,7 +200,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   for (let n = 1; n <= maxAttempts; n++) {
     // A second attempt isn't a plain repeat: the prompt gets told what went wrong with the first one.
     const previous = report.attempts.at(-1);
-    const fixes = previous ? refinements(previous, scene) : [];
+    const fixes = previous && (req.retryFixes ?? true) ? refinements(previous, scene) : [];
     const prompt = editPrompt(scene, {
       windowCount: windows.length,
       hasOldCurtains: oldCurtains.length > 0,
@@ -223,6 +230,32 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       passed: false,
     };
     report.attempts.push(attempt);
+
+    if (req.paste === false) {
+      // Ablation baseline: the generator's own picture, judged by the same checker, with no other gate.
+      step("check", n);
+      const rawJpeg = await rgbToJpeg(rawResized, room.width, room.height);
+      report.image = rawJpeg;
+      attempt.verdict = await askJson(
+        checker,
+        "result check",
+        verdictPrompt(scene),
+        [
+          { caption: "Original room:", dataUrl: room.dataUrl },
+          { caption: "Result:", dataUrl: jpegDataUrl(rawJpeg) },
+          { caption: "Fabric:", dataUrl: fabric.dataUrl },
+        ],
+        verdictSchema,
+        costs,
+      );
+      attempt.passed = verdictPasses(attempt.verdict);
+      if (attempt.passed) {
+        report.status = "accepted";
+        return finish();
+      }
+      attempt.why = `result check: ${attempt.verdict.defects.join(", ") || "low score"} (${attempt.verdict.notes})`;
+      continue;
+    }
 
     step("check", n);
     const alignedPhoto = { dataUrl: jpegDataUrl(alignedJpeg), width: room.width, height: room.height };
@@ -255,12 +288,14 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // curtains were (the generator removed them there).
     attempt.colour = lockFabricColour(aligned, drapes, fabricColour);
     // Then give them the room's light: Muse Image lights every curtain alike, even in a shaded far corner.
-    const relit = relightCurtains(room.rgb, aligned, drapes, windowMask, room.width, room.height);
-    attempt.light = { minGain: relit.minGain, maxGain: relit.maxGain };
-    report.debug.light ??= await sharp(relit.map.data, { raw: { width: relit.map.width, height: relit.map.height, channels: 1 } })
-      .resize(room.width, room.height)
-      .jpeg({ quality: 85 })
-      .toBuffer();
+    if (req.relight ?? true) {
+      const relit = relightCurtains(room.rgb, aligned, drapes, windowMask, room.width, room.height);
+      attempt.light = { minGain: relit.minGain, maxGain: relit.maxGain };
+      report.debug.light ??= await sharp(relit.map.data, { raw: { width: relit.map.width, height: relit.map.height, channels: 1 } })
+        .resize(room.width, room.height)
+        .jpeg({ quality: 85 })
+        .toBuffer();
+    }
     // SAM leaves crumbs where curtains peek out behind furniture; pasted one by one they show as blotches.
     // Drop the small pieces, merge the rest into solid shapes, then feather the edge.
     const grow = Math.round(room.width * 0.006);

@@ -117,7 +117,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   report.before = room.jpeg;
 
   // Read the scene and segment the room at the same time: none of these depend on each other.
-  const [scene, windowsAll, oldCurtains] = await Promise.all([
+  const [scene, windowsAll, oldCurtains, oldTulle] = await Promise.all([
     askJson(
       checker,
       "scene check",
@@ -131,6 +131,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     ),
     findWindows(room, costs),
     segment(room, "curtains", costs),
+    segment(room, "sheer white tulle", costs),
   ]);
   report.scene = scene;
 
@@ -150,6 +151,14 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
 
   const windowMask = union(windows.map((w) => w.mask), size);
   const oldMask = union(oldCurtains.map((c) => c.mask), size);
+  // Old curtains that aren't the tulle. With only a tulle on the window, it stays the client's own and just the new
+  // drapes and rod are pasted: pasting the tulle would bring in the generator's redrawn window behind it. With old
+  // drapes beside it, the tulle comes from the generated picture along with them, or there would be a seam where
+  // the old drapes hung; the window check then looks through the tulle, so a redrawn window behind it fails.
+  const keepsTulle = (scene.window_cover === "sheer" || scene.window_cover === "mixed") && scene.fabric_opacity !== "sheer";
+  const tulleOriginal = keepsTulle ? dilate(union(oldTulle.map((t) => t.mask), size), room.width, room.height, Math.round(room.width * 0.004)) : undefined;
+  const oldDrapes = tulleOriginal ? oldMask.map((v, i) => (v && !tulleOriginal[i] ? 1 : 0)) : oldMask;
+  const replaced = scene.window_cover === "sheer" ? oldDrapes : oldMask;
   const region = allowedRegion(windows, oldCurtains, room.width, room.height);
   // The window with its frame: what alignment compares.
   const windowFrame = dilate(windowMask, room.width, room.height, Math.round(room.width * 0.03));
@@ -268,9 +277,8 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     step("check", n);
     const alignedPhoto = { dataUrl: jpegDataUrl(alignedJpeg), width: room.width, height: room.height };
     // A rod over the window and a track on the ceiling are different things to SAM; both are pasted with the curtains.
-    // When a white tulle stays on the window and the client's fabric isn't sheer, SAM's "curtains" takes the tulle in
-    // too; it is found on its own so the fabric's colour and the room's light go only onto the new drapes.
-    const keepsTulle = (scene.window_cover === "sheer" || scene.window_cover === "mixed") && scene.fabric_opacity !== "sheer";
+    // When a white tulle stays on the window, SAM's "curtains" takes it in too; it is found on its own so the
+    // fabric's colour, the room's light and the paste go only onto the new drapes.
     const [newCurtains, rods, tracks, tulle] = await Promise.all([
       segment(alignedPhoto, "curtains", costs),
       segment(alignedPhoto, "curtain rod", costs),
@@ -283,7 +291,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     const rodMask = union([...rods, ...tracks].map((r) => r.mask), size);
     const newArea = area(newMask);
     attempt.geometry = {
-      windowDiff: await windowMatch(room.rgb, aligned, room.width, room.height, windowOutline(windowMask, union([newMask, rodMask, oldMask], size), room.width, room.height)),
+      windowDiff: await windowMatch(room.rgb, aligned, room.width, room.height, windowOutline(windowMask, union([drapes, rodMask, oldDrapes], size), room.width, room.height)),
       curtainsInsideRegion: newArea ? area(and(newMask, region)) / newArea : 0,
       curtainCoverage: newArea / Math.max(1, area(windowMask)),
     };
@@ -308,7 +316,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // Drop the small pieces, merge the rest into solid shapes, then feather the edge.
     const grow = Math.round(room.width * 0.006);
     const solid = close(
-      dropSmall(union([newMask, rodMask, oldMask], size), room.width, room.height, Math.round(size * 0.002)),
+      dropSmall(union([drapes, rodMask, replaced], size), room.width, room.height, Math.round(size * 0.002)),
       room.width,
       room.height,
       Math.round(room.width * 0.012),

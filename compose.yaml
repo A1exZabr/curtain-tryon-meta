@@ -5,6 +5,8 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
+    # Running try-ons take up to two minutes; the server finishes them before it exits on a restart.
+    stop_grace_period: 180s
     environment:
       PORT: "8080"
       SPEND_CAP_USD_PER_DAY: "${SPEND_CAP_USD_PER_DAY:-10}"

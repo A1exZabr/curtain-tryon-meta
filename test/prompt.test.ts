@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { editPrompt, refinements, type AttemptReport } from "../src/pipeline/tryon.ts";
+import { editPrompt, looksLikeFabric, refinements, type AttemptReport } from "../src/pipeline/tryon.ts";
+import { rgbToLab } from "../src/pipeline/colour.ts";
 import { estimateFabric, STYLES } from "../src/pipeline/styles.ts";
 import { refusalMessage, REFUSALS, sceneSchema, verdictPasses, type Verdict } from "../src/meta/vision.ts";
 
@@ -79,4 +80,12 @@ test("a fabric estimate: rod past both sides, times the fullness, rounded up to 
   assert.equal(e.metres, Math.ceil((420 * 2.2) / 100 * 2) / 2);
   assert.equal(e.dropCm, 268);
   assert.equal(estimateFabric(wave, [{ width_cm: 5, height_cm: 3 }]), undefined);
+});
+
+test("in a tulle's area, a dark velvet in shade is drape; wood, a pink bumper and a white frame are not", () => {
+  const fabric = rgbToLab(10, 77, 46), tulle = rgbToLab(236, 236, 234);
+  assert.equal(looksLikeFabric(rgbToLab(47, 49, 36), fabric, tulle), true);
+  assert.equal(looksLikeFabric(rgbToLab(196, 140, 90), fabric, tulle), false);
+  assert.equal(looksLikeFabric(rgbToLab(232, 160, 160), fabric, tulle), false);
+  assert.equal(looksLikeFabric(rgbToLab(167, 159, 157), fabric, tulle), false);
 });

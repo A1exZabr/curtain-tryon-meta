@@ -138,7 +138,7 @@ async function startRecording() {
       try {
         const wav = await toWav(new Blob(chunks, { type: recorder.mimeType }));
         const res = await fetch("/api/transcribe", { method: "POST", headers: { "Content-Type": "audio/wav" }, body: wav });
-        const body = await res.json();
+        const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error);
         $("#wish").value = body.text;
         note(body.text ? "Muse Voice Transcribe wrote down what you said. Edit it if needed." : "Nothing was heard. Try again a little closer to the microphone.");
@@ -222,8 +222,8 @@ $("#form").addEventListener("submit", async (e) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ room: photos.room, fabric: photos.fabric, style: photos.style, wish: $("#wish").value.trim() || undefined }),
     });
-    const started = await res.json();
-    if (!res.ok) throw new Error(started.error);
+    const started = await res.json().catch(() => ({ error: "The demo is busy restarting. Please try again in a minute." }));
+    if (!res.ok || !started.id) throw new Error(started.error);
     const result = await poll(started.id);
     showResult(result);
   } catch (error) {
@@ -235,10 +235,23 @@ $("#form").addEventListener("submit", async (e) => {
   }
 });
 
+const LOST = "The demo restarted while your try-on was running. Please try again.";
+
 async function poll(id) {
+  let misses = 0;
   for (;;) {
     await new Promise((r) => setTimeout(r, 1500));
-    const job = await fetch(`/api/jobs/${id}`).then((r) => r.json());
+    let job;
+    try {
+      const res = await fetch(`/api/jobs/${id}`);
+      if (res.status === 404) throw new Error(LOST);
+      job = await res.json();
+      misses = 0;
+    } catch (error) {
+      // A dropped connection or a proxy's error page during a restart: keep asking for half a minute.
+      if (error.message === LOST || ++misses > 20) throw new Error(LOST);
+      continue;
+    }
     if (job.status === "error") throw new Error(job.error);
     if (job.status === "done") { showStep("done"); return job.result; }
     if (job.status === "queued") $("#go").textContent = `In line: ${job.position}`;

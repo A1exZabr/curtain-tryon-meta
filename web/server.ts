@@ -132,6 +132,21 @@ async function runNext(): Promise<void> {
   }
 }
 
+// On a restart the container gets SIGTERM: take no new try-ons and let the running ones finish (the page keeps
+// polling this container until then), then exit. compose.yaml gives it the time.
+let closing = false;
+process.on("SIGTERM", () => {
+  closing = true;
+  const since = Date.now();
+  const timer = setInterval(() => {
+    if ((running === 0 && queue.length === 0) || Date.now() - since > 170_000) {
+      clearInterval(timer);
+      // A last poll can still collect a result that has just finished.
+      setTimeout(() => process.exit(0), 5000);
+    }
+  }, 1000);
+});
+
 // Drop finished jobs after an hour so photos don't pile up in memory.
 setInterval(() => {
   const cutoff = Date.now() - 3600_000;
@@ -188,6 +203,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && url.pathname === "/api/tryon") {
+      if (closing) return send(res, 503, { error: "The demo is restarting. Please try again in a minute." });
       const now = Date.now();
       const recent = (triesByVisitor.get(ip) ?? []).filter((t) => t > now - 3600_000);
       if (recent.length >= TRIES_PER_HOUR) return send(res, 429, { error: "That's enough tries for this hour. Please look at the gallery meanwhile." });

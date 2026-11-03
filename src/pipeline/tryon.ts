@@ -18,7 +18,7 @@ import {
 } from "../meta/vision.ts";
 import { applyAlignment, findAlignment, matchTone, windowMatch, windowOutline, type Alignment } from "./align.ts";
 import { composite, overlay } from "./composite.ts";
-import { fabricLab, lockFabricColour, type ColourLock } from "./colour.ts";
+import { fabricLab, lockFabricColour, rgbToLab, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
 import { estimateFabric, STYLES, styleById, styleSample, type CurtainStyle, type FabricEstimate } from "./styles.ts";
 import { jpegDataUrl, loadPhoto, rgbToJpeg, toSize, type Photo } from "./images.ts";
@@ -133,8 +133,9 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     findWindows(room, costs),
     segment(room, "curtains", costs),
     segment(room, "sheer white tulle", costs),
-    // Furniture and lamps stand in front of the window wall: a curtain drawn over them is pasted around them.
-    Promise.all(["furniture", "lamp", "chandelier"].map((phrase) => segment(room, phrase, costs))).then((r) => r.flat()),
+    // Lamps and chandeliers hang in the air in front of the window wall: a curtain or rod drawn over them is pasted
+    // around them.
+    Promise.all(["lamp", "chandelier"].map((phrase) => segment(room, phrase, costs))).then((r) => r.flat()),
   ]);
   report.scene = scene;
 
@@ -144,7 +145,10 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     report.clientMessage = refusalMessage(scene);
     return finish();
   }
-  const windows = mainWindows(windowsAll, room.width, room.height);
+  // A window hidden behind a tulle or drawn curtains is often invisible to SAM; when the scene check sees a covered
+  // window, what covers it marks the opening.
+  const covered = scene.window_visible && scene.window_cover !== "none" ? mainWindows(oldTulle.length ? oldTulle : oldCurtains, room.width, room.height) : [];
+  const windows = windowsAll.length ? mainWindows(windowsAll, room.width, room.height) : covered;
   if (windows.length === 0) {
     report.status = "rejected_input";
     report.reason = "NO_WINDOW (segmentation)";
@@ -163,6 +167,8 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
   const oldDrapes = tulleOriginal ? oldMask.map((v, i) => (v && !tulleOriginal[i] ? 1 : 0)) : oldMask;
   const replaced = scene.window_cover === "sheer" ? oldDrapes : oldMask;
   const keepOut = union(inFront.map((o) => o.mask), size);
+  const tulleLab = tulleOriginal ? meanLab(room.rgb, tulleOriginal) : undefined;
+  report.debug["in-front"] = await overlay(room.rgb, room.width, room.height, [{ mask: keepOut, colour: [230, 0, 200], alpha: 0.45 }]);
   const region = allowedRegion(windows, oldCurtains, room.width, room.height);
   // The window with its frame: what alignment compares.
   const windowFrame = dilate(windowMask, room.width, room.height, Math.round(room.width * 0.03));
@@ -291,14 +297,24 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     ]);
     const newMask = union(newCurtains.map((c) => c.mask), size);
     const tulleMask = union(tulle.map((t) => t.mask), size);
-    // SAM gives each drape and the tulle as separate pieces. A piece lying mostly inside the tulle mask is the tulle;
-    // the drapes stay whole even where the tulle mask spills over them.
-    const drapePieces = newCurtains.filter((c) => area(and(c.mask, tulleMask)) / Math.max(1, c.area) < 0.6);
-    const drapes = !tulle.length
-      ? newMask
-      : drapePieces.length
-        ? union(drapePieces.map((c) => c.mask), size)
-        : newMask.map((v, i) => (v && !tulleMask[i] ? 1 : 0));
+    // Where the client's tulle hangs, SAM's pieces can't be trusted to tell it from the new drapes (it hands back a
+    // drape in front of the tulle as part of it, and stops a drape at a cot's rail). There a pixel is new drape when
+    // the generator changed it and it has the fabric's hue and colourfulness (or, for a grey or white fabric, its
+    // lightness): so the drape comes through between a cot's bars, while the tulle, the window behind it and the bars
+    // stay the photo's. Elsewhere the drapes are what SAM calls curtains.
+    let drapes = newMask;
+    // A fabric as pale as the tulle can't be told from it by colour; then the drapes are what SAM calls curtains.
+    if (tulleOriginal && labDistance(fabricColour, tulleLab!) >= 25) {
+      const inTulle = new Uint8Array(size);
+      for (let i = 0; i < size; i++) {
+        if (!tulleOriginal[i] || !region[i]) continue;
+        const lab = rgbToLab(aligned[i * 3]!, aligned[i * 3 + 1]!, aligned[i * 3 + 2]!);
+        const was = rgbToLab(room.rgb[i * 3]!, room.rgb[i * 3 + 1]!, room.rgb[i * 3 + 2]!);
+        if (labDistance(lab, was) > 12 && looksLikeFabric(lab, fabricColour, tulleLab!)) inTulle[i] = 1;
+      }
+      const cleaned = dropSmall(close(inTulle, room.width, room.height, Math.round(room.width * 0.003)), room.width, room.height, Math.round(size * 0.0005));
+      drapes = union([newMask.map((v, i) => (v && !tulleOriginal[i] ? 1 : 0)), cleaned], size);
+    }
     const rodMask = union([...rods, ...tracks].map((r) => r.mask), size);
     const newArea = area(newMask);
     attempt.geometry = {
@@ -383,6 +399,28 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
 
   report.reason = report.attempts.at(-1)?.why ?? "no attempt passed";
   return finish();
+}
+
+function meanLab(rgb: Buffer, mask: Mask): [number, number, number] {
+  let L = 0, A = 0, B = 0, n = 0;
+  for (let i = 0; i < mask.length; i += 4) {
+    if (!mask[i]) continue;
+    const [l, a, b] = rgbToLab(rgb[i * 3]!, rgb[i * 3 + 1]!, rgb[i * 3 + 2]!);
+    L += l; A += a; B += b; n++;
+  }
+  return n ? [L / n, A / n, B / n] : [0, 0, 0];
+}
+
+function labDistance(a: [number, number, number], b: [number, number, number]): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
+/**
+ * Whether a pixel is clearly nearer the fabric's colour than the tulle's, lightness included: a deep velvet in shade
+ * is nearly grey, so hue alone misses it, while a cot's wood, a pink bumper or a white frame stay nearer the tulle.
+ */
+export function looksLikeFabric(px: [number, number, number], fabric: [number, number, number], tulle: [number, number, number]): boolean {
+  return labDistance(px, fabric) < 0.8 * labDistance(px, tulle);
 }
 
 /**

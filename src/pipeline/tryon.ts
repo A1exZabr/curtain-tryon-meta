@@ -17,7 +17,7 @@ import {
   type SceneFacts,
   type Verdict,
 } from "../meta/vision.ts";
-import { applyAlignment, coveredBox, cropRgb, edgeKept, findAlignment, matchLocalTone, matchTone, outsideBox, regionMatch, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
+import { applyAlignment, coveredBox, cropRgb, edgeKept, findAlignment, matchTone, outsideBox, regionMatch, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, rgbToLab, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
@@ -248,6 +248,9 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
         : await editImage(references, prompt, sizeFor(room.width, room.height), costs);
     step("align", n);
     const rawResized = await toSize(generated, room.width, room.height);
+    report.debug[`raw-${n}`] = await rgbToJpeg(rawResized, room.width, room.height, 85);
+    // The tone is matched only to measure (alignment, checks). The client sees the generator's own light and colour,
+    // as CurtainBot does: every correction of it tried here (a pixel fit, a local light map) made rooms milky or dark.
     const resized = matchTone(room.rgb, rawResized, region);
     const alignment = await findAlignment(room.rgb, resized, room.width, room.height, windowFrame);
     // With several windows each is also aligned on its own frame, searching near the overall alignment; where that
@@ -270,10 +273,13 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     } else {
       placed = await applyAlignment(resized, room.width, room.height, alignment);
     }
+    const placedRaw = used.length > 1
+      ? warpByColumns(rawResized, room.width, room.height, windows.map((w, i) => ({ x: (w.box.x1 + w.box.x2) / 2, al: used[i]! })))
+      : await applyAlignment(rawResized, room.width, room.height, alignment);
     const box = coveredBox(room.width, room.height, used);
     const uncovered = outsideBox(room.width, room.height, box);
     const toneOut = union([region, uncovered], size);
-    const aligned = matchLocalTone(room.rgb, matchTone(room.rgb, placed, toneOut), toneOut, room.width, room.height);
+    const aligned = matchTone(room.rgb, placed, toneOut);
     const alignedJpeg = await rgbToJpeg(aligned, room.width, room.height);
     report.debug[`generated-${n}`] = alignedJpeg;
     const attempt: AttemptReport = {
@@ -401,9 +407,9 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       continue;
     }
     if (req.whole ?? true) {
-      const locked = Buffer.from(aligned);
+      const locked = Buffer.from(placedRaw);
       attempt.colour = lockFabricColour(locked, drapes, fabricColour);
-      const whole = await composite(aligned, locked, dilate(drapes, room.width, room.height, grow * 3), room.width, room.height, grow * 6);
+      const whole = await composite(placedRaw, locked, dilate(drapes, room.width, room.height, grow * 3), room.width, room.height, grow * 6);
       // Both pictures are cut to what the generator really drew (see coveredBox), so the slider compares like with like.
       const bw = box.x2 - box.x1, bh = box.y2 - box.y1;
       const full = bw === room.width && bh === room.height;

@@ -76,7 +76,8 @@ function present(report: TryOnReport): unknown {
     ...rest,
     before: dataUrl(before),
     image: dataUrl(image),
-    debug: Object.fromEntries(Object.entries(debug).map(([k, v]) => [k, dataUrl(v)])),
+    // The generator's raw pictures stay on the server side: they are for the evaluation, not the page.
+    debug: Object.fromEntries(Object.entries(debug).filter(([k]) => !k.startsWith("raw-")).map(([k, v]) => [k, dataUrl(v)])),
   };
 }
 

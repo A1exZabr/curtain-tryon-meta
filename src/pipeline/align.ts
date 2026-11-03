@@ -114,38 +114,34 @@ async function search(
 }
 
 /**
- * The generator also shifts the tone: a little darker, warmer, hazier. This maps each colour channel of the result
- * onto the original's by their distributions over the room outside `keepOut` (quantile matching), not pixel by pixel:
- * a pixel-by-pixel fit on a picture that sits a few pixels off flattens the contrast and turns the room milky.
+ * The generator also shifts the tone: a little darker, warmer, flatter. For measuring, each colour channel of the
+ * result gets the original's mean and spread over the room outside `keepOut`. Not a pixel-by-pixel fit (on a picture
+ * laid a few pixels off it flattens the contrast into a milky room) and not a matched curve (fitted to a room darker
+ * than its windows, it turns the glass into a flat grey).
  */
 export function matchTone(original: Buffer, generated: Buffer, keepOut: Mask): Buffer {
   const out = Buffer.alloc(generated.length);
   const pixels = keepOut.length;
   const step = Math.max(1, Math.floor(pixels / 300_000));
   for (let c = 0; c < 3; c++) {
-    const ho = new Float64Array(256);
-    const hg = new Float64Array(256);
-    let n = 0;
+    let n = 0, so = 0, soo = 0, sg = 0, sgg = 0;
     for (let i = 0; i < pixels; i += step) {
       if (keepOut[i]) continue;
-      ho[original[i * 3 + c]!]!++;
-      hg[generated[i * 3 + c]!]!++;
-      n++;
+      const o = original[i * 3 + c]!, g = generated[i * 3 + c]!;
+      n++; so += o; soo += o * o; sg += g; sgg += g * g;
     }
-    const lut = new Uint8Array(256);
-    if (n < 1000) for (let v = 0; v < 256; v++) lut[v] = v;
-    else {
-      // The generated value v sits at the middle of its share of the distribution; it becomes the original's value
-      // at the same share.
-      let below = 0, u = 0, upTo = ho[0]!;
-      for (let v = 0; v < 256; v++) {
-        const at = (below + hg[v]! / 2) / n;
-        while (u < 255 && upTo / n < at) upTo += ho[++u]!;
-        lut[v] = u;
-        below += hg[v]!;
-      }
+    let gain = 1, offset = 0;
+    if (n > 1000) {
+      const mo = so / n, mg = sg / n;
+      const dg = Math.sqrt(Math.max(0, sgg / n - mg * mg));
+      const dO = Math.sqrt(Math.max(0, soo / n - mo * mo));
+      gain = dg > 1 ? Math.min(1.4, Math.max(0.7, dO / dg)) : 1;
+      offset = mo - gain * mg;
     }
-    for (let i = 0; i < pixels; i++) out[i * 3 + c] = lut[generated[i * 3 + c]!]!;
+    for (let i = 0; i < pixels; i++) {
+      const v = gain * generated[i * 3 + c]! + offset;
+      out[i * 3 + c] = v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
+    }
   }
   return out;
 }
@@ -298,5 +294,6 @@ export async function edgeKept(original: Buffer, result: Buffer, width: number, 
     total++;
     if (eb[i]) kept++;
   }
-  return total ? kept / total : 1;
+  // A photo with almost no edges left to compare (a dark room whose only contrast is the window) can't tell.
+  return total > tw * th * 0.002 ? kept / total : 1;
 }

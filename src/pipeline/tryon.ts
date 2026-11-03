@@ -104,6 +104,9 @@ export interface TryOnReport {
 export const LIMITS = {
   maxWindowDiff: 40, // 40th percentile of grey difference along the window's outline after alignment (0..255); above it the window moved
   minInside: 0.8, // share of the new curtains that must lie inside the allowed region
+  // The whole picture isn't cut along this area, so a drape just past it (where an old one SAM missed hung) is fine;
+  // a curtain on a blank wall is the checker's EXTRA_CURTAIN.
+  minInsideWhole: 0.5,
   minCoverage: 0.12, // new curtain area relative to the window area; below it the curtains are missing
   minTulleKept: 0.5, // share of the original tulle still found on the result when the tulle should stay
   maxRoomDiff: Number(process.env.MAX_ROOM_DIFF ?? 18), // 60th percentile of grey difference over the room outside curtains and windows
@@ -390,7 +393,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       attempt.why = "no new curtains found on the result";
       continue;
     }
-    if (attempt.geometry.curtainsInsideRegion < LIMITS.minInside) {
+    if (attempt.geometry.curtainsInsideRegion < ((req.whole ?? true) ? LIMITS.minInsideWhole : LIMITS.minInside)) {
       attempt.why = `curtains spill outside the window area (${(attempt.geometry.curtainsInsideRegion * 100).toFixed(0)}% inside)`;
       continue;
     }

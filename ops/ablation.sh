@@ -4,9 +4,9 @@
 # Usage (in a copy of the repo, with the API keys in ENV_FILE): ENV_FILE=/path/.env sh ops/ablation.sh raw paste light design full
 set -e
 run() {
-  docker run --rm --cpus 1.5 --memory 2g -v "$PWD":/app -w /app --env-file "$ENV_FILE" \
+  docker run --rm --cpus "${CPUS:-1.5}" --memory 2g -v "$PWD":/app -w /app --env-file "$ENV_FILE" \
     -e SPEND_FILE=/app/data/eval-spend-$1.json -e SPEND_CAP_USD_PER_DAY=4 node:24-slim \
-    npx tsx eval/run.ts --parallel 3 --variant "$1" --out "out/ablation/$1" --results "eval/RESULTS-$1.md" > "out/ablation-$1.log" 2>&1
+    npx tsx eval/run.ts --parallel "${PARALLEL:-3}" --variant "$1" --out "out/ablation/$1" --results "eval/RESULTS-$1.md" > "out/ablation-$1.log" 2>&1
 }
 mkdir -p out/ablation
 docker run --rm -v "$PWD":/app -w /app node:24-slim npm ci --no-audit --no-fund > /dev/null 2>&1

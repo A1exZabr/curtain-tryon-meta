@@ -1,6 +1,6 @@
 # Evaluation results
 
-Run on 2026-11-03 19:30 UTC with `npm run eval -- --variant full`, checker: spark-open.
+Run on 2026-11-03 22:21 UTC with `npm run eval -- --variant full`, checker: spark-open.
 Photos come from Unsplash, Pexels and Wikimedia Commons under their free licences; see `eval/photos.json` for authors and links.
 
 - Accepted try-ons: **17 of 20** (85%), 14 on the first attempt.

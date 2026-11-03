@@ -227,12 +227,18 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     step("check", n);
     const alignedPhoto = { dataUrl: jpegDataUrl(alignedJpeg), width: room.width, height: room.height };
     // A rod over the window and a track on the ceiling are different things to SAM; both are pasted with the curtains.
-    const [newCurtains, rods, tracks] = await Promise.all([
+    // When a white tulle stays on the window and the client's fabric isn't sheer, SAM's "curtains" takes the tulle in
+    // too; it is found on its own so the fabric's colour and the room's light go only onto the new drapes.
+    const keepsTulle = (scene.window_cover === "sheer" || scene.window_cover === "mixed") && scene.fabric_opacity !== "sheer";
+    const [newCurtains, rods, tracks, tulle] = await Promise.all([
       segment(alignedPhoto, "curtains", costs),
       segment(alignedPhoto, "curtain rod", costs),
       segment(alignedPhoto, "curtain track", costs),
+      keepsTulle ? segment(alignedPhoto, "sheer white tulle", costs) : Promise.resolve([]),
     ]);
     const newMask = union(newCurtains.map((c) => c.mask), size);
+    const tulleMask = union(tulle.map((t) => t.mask), size);
+    const drapes = tulle.length ? newMask.map((v, i) => (v && !tulleMask[i] ? 1 : 0)) : newMask;
     const rodMask = union([...rods, ...tracks].map((r) => r.mask), size);
     const newArea = area(newMask);
     attempt.geometry = {
@@ -247,9 +253,9 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
 
     // Pull the curtains' colour back to the fabric's, then paste the new curtains and rod, and wherever the old
     // curtains were (the generator removed them there).
-    attempt.colour = lockFabricColour(aligned, newMask, fabricColour);
+    attempt.colour = lockFabricColour(aligned, drapes, fabricColour);
     // Then give them the room's light: Muse Image lights every curtain alike, even in a shaded far corner.
-    const relit = relightCurtains(room.rgb, aligned, newMask, windowMask, room.width, room.height);
+    const relit = relightCurtains(room.rgb, aligned, drapes, windowMask, room.width, room.height);
     attempt.light = { minGain: relit.minGain, maxGain: relit.maxGain };
     report.debug.light ??= await sharp(relit.map.data, { raw: { width: relit.map.width, height: relit.map.height, channels: 1 } })
       .resize(room.width, room.height)

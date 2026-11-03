@@ -199,6 +199,9 @@ h2 { font-size: clamp(26px, 2.8vw, 34px); line-height: 1.1; margin-bottom: 12px;
 .verdict.ok { color: var(--ok); }
 .verdict.no { color: var(--bad); }
 .design { margin: -6px 0 14px; max-width: 46em; color: var(--muted); }
+.save { margin: 0 0 14px; }
+.save a { display: inline-block; padding: 10px 16px; border: 1px solid var(--thread); text-decoration: none; font-weight: 500; }
+.save a:hover { background: var(--thread); color: var(--paper); }
 .design b { color: var(--thread); font-weight: 600; }
 .inside summary { cursor: pointer; font-weight: 600; padding: 8px 0; width: max-content; max-width: 100%; }
 .inside-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }

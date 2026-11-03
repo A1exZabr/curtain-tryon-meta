@@ -262,8 +262,11 @@ function showResult(r) {
   if (r.image && r.status === "accepted") {
     resultCompare.show(r.before, r.image);
     $("#result-compare").hidden = false;
+    $("#save-link").href = r.image;
+    $("#save").hidden = false;
   } else {
     $("#result-compare").hidden = true;
+    $("#save").hidden = true;
   }
   const design = $("#design");
   design.hidden = !r.design;

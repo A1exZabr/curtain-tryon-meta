@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="preload" href="/fonts/zabsoft-display.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/style.css?v=11">
+  <link rel="stylesheet" href="/style.css?v=12">
 </head>
 <body>
   <header class="top">
@@ -106,6 +106,7 @@
           <div class="tape" role="slider" tabindex="0" aria-label="Drag to compare before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>
         </div>
         <p class="verdict" id="verdict"></p>
+        <p class="save" id="save" hidden><a id="save-link" download="curtains-try-on.jpg">Save the picture</a></p>
         <p class="design" id="design" hidden></p>
         <details class="inside">
           <summary>What the models saw</summary>
@@ -137,6 +138,6 @@
     </a>
     <p>ZabSoft LLC, Batumi, Georgia, for the Meta Global AI Developer Hackathon. Photos you send go to Meta's and Baseten's APIs for your try-on; this demo doesn't store them.</p>
   </footer>
-  <script src="/app.js?v=10" type="module"></script>
+  <script src="/app.js?v=11" type="module"></script>
 </body>
 </html>

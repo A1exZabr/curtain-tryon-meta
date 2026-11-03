@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { close, dilate, dropSmall, erode, frontWindows, mainWindows } from "../src/pipeline/region.ts";
+import { close, dilate, dropSmall, erode, frontWindows, mainWindows, windowGroups } from "../src/pipeline/region.ts";
 import { changedOutside } from "../src/pipeline/tryon.ts";
 import { windowMatch, windowOutline } from "../src/pipeline/align.ts";
 import { composite } from "../src/pipeline/composite.ts";
@@ -100,4 +100,11 @@ test("windows seen through a balcony door are dropped, the door stays", () => {
   const seg = (x1: number, y1: number, x2: number, y2: number) => ({ box: { x1, y1, x2, y2 }, mask: new Uint8Array(0), area: (x2 - x1) * (y2 - y1) });
   const door = seg(300, 300, 700, 1000), behind = seg(350, 400, 650, 700), side = seg(800, 300, 1000, 700);
   assert.deepEqual(frontWindows([behind, door, side]), [door, side]);
+});
+
+test("the leaves of a door group into one opening, a window across the room stays apart", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ box: { x1, y1, x2, y2 }, mask: new Uint8Array(0), area: (x2 - x1) * (y2 - y1) });
+  const groups = windowGroups([seg(100, 200, 180, 600), seg(190, 220, 270, 620), seg(600, 200, 700, 400)]);
+  assert.equal(groups.length, 2);
+  assert.deepEqual(groups[0], { x1: 100, y1: 200, x2: 270, y2: 620 });
 });

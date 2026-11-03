@@ -34,10 +34,38 @@ export function frontWindows(windows: Segment[]): Segment[] {
 }
 
 /**
- * Where curtains are allowed to be: for each window, from the top of the photo (rods and ceiling tracks often sit
- * at the ceiling, well above the frame) down to the bottom, and 60% of the window's width out to each side (rods
- * usually run wider than the frame). Existing curtains are added too, since they have to be replaced wherever
- * they hang.
+ * Windows standing side by side, closer than a fifth of the wider one's width and level with each other, as one
+ * box: the two leaves of a balcony door, or a door with the balcony window seen through it, get curtains as one
+ * opening.
+ */
+export function windowGroups(windows: Segment[]): Segment["box"][] {
+  const boxes = windows.map((w) => ({ ...w.box }));
+  let merged = true;
+  while (merged) {
+    merged = false;
+    outer: for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]!, b = boxes[j]!;
+        const gap = Math.max(a.x1, b.x1) - Math.min(a.x2, b.x2);
+        const overlapY = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+        const minH = Math.min(a.y2 - a.y1, b.y2 - b.y1);
+        if (gap <= 0.2 * Math.max(a.x2 - a.x1, b.x2 - b.x1) && overlapY >= 0.5 * minH) {
+          boxes[i] = { x1: Math.min(a.x1, b.x1), y1: Math.min(a.y1, b.y1), x2: Math.max(a.x2, b.x2), y2: Math.max(a.y2, b.y2) };
+          boxes.splice(j, 1);
+          merged = true;
+          break outer;
+        }
+      }
+    }
+  }
+  return boxes;
+}
+
+/**
+ * Where curtains are allowed to be: for each group of windows, from the top of the photo (rods and ceiling tracks
+ * often sit at the ceiling, well above the frame) down to the bottom, and 60% of the group's width out to each
+ * side (rods usually run wider than the frame). Existing curtains are added too, since they have to be replaced
+ * wherever they hang.
  */
 export function allowedRegion(
   windows: Segment[],
@@ -46,10 +74,10 @@ export function allowedRegion(
   height: number,
 ): Mask {
   const region = new Uint8Array(width * height);
-  for (const w of windows) {
-    const ww = w.box.x2 - w.box.x1;
-    const left = Math.max(0, Math.floor(w.box.x1 - ww * 0.6));
-    const right = Math.min(width, Math.ceil(w.box.x2 + ww * 0.6));
+  for (const box of windowGroups(windows)) {
+    const ww = box.x2 - box.x1;
+    const left = Math.max(0, Math.floor(box.x1 - ww * 0.6));
+    const right = Math.min(width, Math.ceil(box.x2 + ww * 0.6));
     for (let y = 0; y < height; y++) region.fill(1, y * width + left, y * width + right);
   }
   for (const c of oldCurtains) or(region, dilate(c.mask, width, height, Math.round(width * 0.01)));

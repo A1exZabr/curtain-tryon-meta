@@ -150,7 +150,8 @@ export function verdictPrompt(scene: Pick<SceneFacts, "fabric_description" | "fa
     "     Curtains hanging against a bright window are naturally somewhat darker than a swatch in daylight, so don't judge exact brightness,",
     '  "realistic": true if the curtains look like a real photo: plausible folds, no smears, no seams at their edges,',
     '  "defects": a list using only these codes: WRONG_FABRIC, WRONG_WINDOW, CURTAINS_MISSING, ROOM_CHANGED, ARTIFACTS,' +
-      " CUT_EDGE (a ragged, crooked or cut-off edge, the top included), NO_ROD (the curtains hang from nothing: no rod, track or ceiling holds them)," +
+      " CUT_EDGE (a ragged, crooked or cut-off edge, the top included), NO_ROD (the tops of the curtains stop in mid-air with nothing above them;" +
+      " curtains whose tops meet the ceiling hang from a ceiling track and are fine, even if the track is too slim to see)," +
       (scene.exterior_visible ? "" : " HALLUCINATED_EXTERIOR (the window was covered in the original and the result shows a view outside),"),
     '  "score": overall quality from 0 to 1,',
     '  "notes": one short sentence',

@@ -7,6 +7,7 @@ import {
   askJson,
   designPrompt,
   designSchema,
+  expectedFor,
   refusalMessage,
   sceneSchema,
   scenePrompt,
@@ -21,7 +22,7 @@ import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, rgbToLab, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
 import { estimateFabric, STYLES, styleById, styleSample, type CurtainStyle, type FabricEstimate } from "./styles.ts";
-import { jpegDataUrl, loadPhoto, rgbToJpeg, toSize, type Photo } from "./images.ts";
+import { closeUps, jpegDataUrl, loadPhoto, rgbToJpeg, toSize, type Photo } from "./images.ts";
 import { allowedRegion, and, area, close, dilate, dropSmall, mainWindows, union, type Mask } from "./region.ts";
 
 export interface TryOnRequest {
@@ -263,19 +264,11 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       step("check", n);
       const rawJpeg = await rgbToJpeg(rawResized, room.width, room.height);
       report.image = rawJpeg;
-      attempt.verdict = await askJson(
-        checker,
-        "result check",
-        verdictPrompt(scene),
-        [
-          { caption: "Original room:", dataUrl: room.dataUrl },
-          { caption: "Result:", dataUrl: jpegDataUrl(rawJpeg) },
-          { caption: "Fabric:", dataUrl: fabric.dataUrl },
-        ],
-        verdictSchema,
-        costs,
-      );
-      attempt.passed = verdictPasses(attempt.verdict);
+      [attempt.verdict, attempt.passed] = await judge(checker, scene, [
+        { caption: "Original room:", dataUrl: room.dataUrl },
+        { caption: "Result:", dataUrl: jpegDataUrl(rawJpeg) },
+        { caption: "Fabric:", dataUrl: fabric.dataUrl },
+      ], costs);
       if (attempt.passed) {
         report.status = "accepted";
         return finish();
@@ -377,19 +370,12 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       continue;
     }
 
-    attempt.verdict = await askJson(
-      checker,
-      "result check",
-      verdictPrompt(scene),
-      [
-        { caption: "Original room:", dataUrl: room.dataUrl },
-        { caption: "Result:", dataUrl: jpegDataUrl(finalJpeg) },
-        { caption: "Fabric:", dataUrl: fabric.dataUrl },
-      ],
-      verdictSchema,
-      costs,
-    );
-    attempt.passed = verdictPasses(attempt.verdict);
+    [attempt.verdict, attempt.passed] = await judge(checker, scene, [
+      { caption: "Original room:", dataUrl: room.dataUrl },
+      { caption: "Result:", dataUrl: jpegDataUrl(finalJpeg) },
+      { caption: "Fabric:", dataUrl: fabric.dataUrl },
+      ...(await closeUps(room.rgb, final, room.width, room.height)).map((dataUrl) => ({ caption: "Close-up of the result:", dataUrl })),
+    ], costs);
     if (attempt.passed) {
       report.status = "accepted";
       return finish();
@@ -399,6 +385,37 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
 
   report.reason = report.attempts.at(-1)?.why ?? "no attempt passed";
   return finish();
+}
+
+/**
+ * The result check: three independent calls, accepted when at least two accept. One call flips on the same picture
+ * from run to run; on our labelled results the majority of three got all of them right (ops/judge-eval.ts). The
+ * verdict kept is the middle score's, with every defect any call named, so a second attempt hears all of them.
+ */
+export const JUDGE_VOTES = 3;
+async function judge(
+  checker: CheckerKind,
+  scene: SceneFacts,
+  images: { caption: string; dataUrl: string }[],
+  costs: CostLog,
+): Promise<[Verdict, boolean]> {
+  const expected = expectedFor(scene);
+  const votes = await Promise.all(
+    Array.from({ length: JUDGE_VOTES }, () => askJson(checker, "result check", verdictPrompt(scene), images, verdictSchema, costs)),
+  );
+  const passes = votes.map((v) => verdictPasses(v, expected));
+  const passed = passes.filter(Boolean).length * 2 > votes.length;
+  const sorted = [...votes].sort((a, b) => a.score - b.score);
+  const middle = sorted[Math.floor(sorted.length / 2)]!;
+  const failing = votes.filter((_, i) => !passes[i]);
+  return [
+    {
+      ...middle,
+      defects: passed ? middle.defects : [...new Set(failing.flatMap((v) => v.defects))],
+      notes: passed ? middle.notes : (failing[0]?.notes ?? middle.notes),
+    },
+    passed,
+  ];
 }
 
 function meanLab(rgb: Buffer, mask: Mask): [number, number, number] {
@@ -551,8 +568,8 @@ export function refinements(attempt: AttemptReport, scene: SceneFacts): string[]
   if (g.curtainCoverage < LIMITS.minCoverage || defects.has("CURTAINS_MISSING")) {
     out.add("The new curtains were missing: hang clearly visible curtains of the fabric on each window.");
   }
-  if (g.curtainsInsideRegion < LIMITS.minInside || defects.has("WRONG_WINDOW")) {
-    out.add("Hang curtains only at the windows, never on a wall without a window.");
+  if (g.curtainsInsideRegion < LIMITS.minInside || defects.has("WRONG_WINDOW") || defects.has("EXTRA_CURTAIN")) {
+    out.add("Hang curtains only right beside the windows, never on a blank wall, in a corner past the last window or over furniture.");
   }
   if (defects.has("WRONG_FABRIC") || (attempt.colour?.deltaE ?? 0) > 40) {
     const colour = scene.fabric_colour_hex ? `, colour ${scene.fabric_colour_hex}` : "";
@@ -561,9 +578,9 @@ export function refinements(attempt: AttemptReport, scene: SceneFacts): string[]
   if (defects.has("ARTIFACTS") || defects.has("CUT_EDGE")) {
     out.add("The curtains' edges were smeared: draw each panel as one clean piece of fabric with crisp, continuous edges, and leave no trace of the old curtains.");
   }
-  if (defects.has("ROOM_CHANGED")) out.add("Keep every piece of furniture, every wall and the floor exactly as they were.");
+  if (defects.has("ROOM_CHANGED") || defects.has("FURNITURE_CORRUPTED")) out.add("Keep every piece of furniture, every wall and the floor exactly as they were.");
   if (defects.has("HALLUCINATED_EXTERIOR")) out.add("Do not open the window or show a view outside where it was covered.");
-  if (g.tulleKept !== undefined && g.tulleKept < LIMITS.minTulleKept) {
+  if ((g.tulleKept !== undefined && g.tulleKept < LIMITS.minTulleKept) || defects.has("TULLE_REMOVED")) {
     out.add("The white tulle on the window was taken down: keep it hanging exactly where it is in image 1, across the window, with the new drapes in front of it at the sides.");
   }
   if (defects.has("NO_ROD")) out.add("The curtains hung from nothing: hang them from a visible rod or a track fixed to the ceiling, their tops meeting it in a straight line.");

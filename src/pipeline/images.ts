@@ -41,3 +41,36 @@ export async function rgbToJpeg(rgb: Buffer, width: number, height: number, qual
 export function jpegDataUrl(jpeg: Buffer): string {
   return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
 }
+
+/**
+ * Close-ups of where `result` differs from `original` (the new curtains), for the result check: small cut edges and
+ * seams are lost on a whole frame. A wide changed area is split into a left and a right close-up.
+ */
+export async function closeUps(original: Buffer, result: Buffer, width: number, height: number): Promise<string[]> {
+  let x1 = width, y1 = height, x2 = -1, y2 = -1;
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x < width; x += 2) {
+      const i = (y * width + x) * 3;
+      if (Math.abs(original[i]! - result[i]!) + Math.abs(original[i + 1]! - result[i + 1]!) + Math.abs(original[i + 2]! - result[i + 2]!) > 60) {
+        if (x < x1) x1 = x; if (x > x2) x2 = x; if (y < y1) y1 = y; if (y > y2) y2 = y;
+      }
+    }
+  }
+  if (x2 < 0) return [];
+  const pad = Math.round(width * 0.03);
+  x1 = Math.max(0, x1 - pad); y1 = Math.max(0, y1 - pad); x2 = Math.min(width - 1, x2 + pad); y2 = Math.min(height - 1, y2 + pad);
+  const boxes = x2 - x1 > width * 0.5
+    ? [{ left: x1, width: Math.round((x2 - x1) / 2) }, { left: x1 + Math.round((x2 - x1) / 2), width: x2 - x1 - Math.round((x2 - x1) / 2) }]
+    : [{ left: x1, width: x2 - x1 }];
+  return Promise.all(
+    boxes.map(async (b) =>
+      jpegDataUrl(
+        await sharp(result, { raw: { width, height, channels: 3 } })
+          .extract({ left: b.left, top: y1, width: Math.max(8, b.width), height: Math.max(8, y2 - y1) })
+          .resize({ width: 1024, height: 1024, fit: "inside" })
+          .jpeg({ quality: 88 })
+          .toBuffer(),
+      ),
+    ),
+  );
+}

@@ -17,7 +17,9 @@ const attempt = (over: Partial<AttemptReport>): AttemptReport => ({
   ...over,
 });
 const verdict = (over: Partial<Verdict>): Verdict => ({
-  same_room: true, curtains_on_window: true, fabric_matches: true, realistic: true, defects: [], score: 0.9, notes: "", ...over,
+  window_same: true, view_same: true, room_same: true, furniture_same: true,
+  same_room: true, curtains_on_window: true, fabric_matches: true, realistic: true,
+  elements: { drapes: true, tulle: false }, defects: [], score: 0.9, notes: "", ...over,
 });
 
 test("a scene answer with an unknown cover or opacity falls back instead of failing", () => {
@@ -58,6 +60,9 @@ test("a critical defect fails the result whatever the score", () => {
   assert.equal(verdictPasses(verdict({})), true);
   assert.equal(verdictPasses(verdict({ defects: ["ROOM_CHANGED"], score: 0.95 })), false);
   assert.equal(verdictPasses(verdict({ defects: ["ARTIFACTS"], score: 0.9 })), true);
+  // A tulle that should still hang but isn't on the result fails it, whatever else the check says.
+  assert.equal(verdictPasses(verdict({}), { tulle: true }), false);
+  assert.equal(verdictPasses(verdict({ elements: { drapes: true, tulle: true } }), { tulle: true }), true);
 });
 
 test("refusals use the fixed sentence for the first known problem", () => {

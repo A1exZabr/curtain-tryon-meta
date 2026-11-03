@@ -17,7 +17,7 @@ import {
   type SceneFacts,
   type Verdict,
 } from "../meta/vision.ts";
-import { applyAlignment, findAlignment, matchTone, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
+import { applyAlignment, findAlignment, matchTone, regionMatch, warpByColumns, windowMatch, windowOutline, type Alignment } from "./align.ts";
 import { composite, overlay } from "./composite.ts";
 import { fabricLab, lockFabricColour, rgbToLab, type ColourLock } from "./colour.ts";
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
@@ -46,6 +46,8 @@ export interface TryOnRequest {
   relight?: boolean;
   /** Tell a second attempt what went wrong with the first. */
   retryFixes?: boolean;
+  /** Show the generator's whole picture when it kept the room (default on); otherwise paste the curtains. */
+  whole?: boolean;
   /** Development only: reuse a generated image instead of paying for a new one. */
   reuseGenerated?: Buffer;
   /** Called as the pipeline moves on, so a page can show which model is working. */
@@ -56,7 +58,9 @@ export type Step = "read" | "generate" | "align" | "check" | "done";
 
 export interface AttemptReport {
   alignment: Alignment;
-  geometry: { windowDiff: number; curtainsInsideRegion: number; curtainCoverage: number; tulleKept?: number };
+  geometry: { windowDiff: number; curtainsInsideRegion: number; curtainCoverage: number; tulleKept?: number; roomDiff?: number };
+  /** "whole": the generator's own picture was shown; "paste": only its curtains were pasted into the photo. */
+  mode?: "whole" | "paste";
   /** Share of the room outside the pasted curtains that the raw generator output changed visibly; ours is 0. */
   rawChangedOutside?: number;
   colour?: ColourLock;
@@ -96,6 +100,7 @@ export const LIMITS = {
   minInside: 0.8, // share of the new curtains that must lie inside the allowed region
   minCoverage: 0.12, // new curtain area relative to the window area; below it the curtains are missing
   minTulleKept: 0.5, // share of the original tulle still found on the result when the tulle should stay
+  maxRoomDiff: Number(process.env.MAX_ROOM_DIFF ?? 18), // 60th percentile of grey difference over the room outside curtains and windows; at or under it the generator kept the room
 };
 
 export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
@@ -353,8 +358,49 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       }
     }
 
-    // Pull the curtains' colour back to the fabric's, then paste the new curtains and rod, and wherever the old
-    // curtains were (the generator removed them there).
+    if (attempt.geometry.curtainCoverage < LIMITS.minCoverage) {
+      attempt.why = "no new curtains found on the result";
+      continue;
+    }
+    if (attempt.geometry.curtainsInsideRegion < LIMITS.minInside) {
+      attempt.why = `curtains spill outside the window area (${(attempt.geometry.curtainsInsideRegion * 100).toFixed(0)}% inside)`;
+      continue;
+    }
+    const grow = Math.max(2, Math.round(room.width * 0.0015));
+
+    // Whole picture. Curtains cut out of the generator's picture were drawn for its version of the room, never quite
+    // the photo's, and pasting them shows: a skew, a cut hem, a halo. When the generator kept the room (the room
+    // outside curtains and windows matches the photo after alignment), its own picture is shown, curtains, light
+    // and shadows drawn together; only the curtains' colour is pulled to the fabric, with a soft edge.
+    const roomArea = dilate(union([newMask, rodMask, oldMask, windowMask], size), room.width, room.height, Math.round(room.width * 0.02)).map((v) => (v ? 0 : 1));
+    attempt.geometry.roomDiff = await regionMatch(room.rgb, aligned, room.width, room.height, roomArea, 0.6);
+    if ((req.whole ?? true) && attempt.geometry.roomDiff <= LIMITS.maxRoomDiff) {
+      const locked = Buffer.from(aligned);
+      attempt.colour = lockFabricColour(locked, drapes, fabricColour);
+      const whole = await composite(aligned, locked, dilate(drapes, room.width, room.height, grow * 3), room.width, room.height, grow * 6);
+      const wholeJpeg = await rgbToJpeg(whole, room.width, room.height);
+      report.image = wholeJpeg;
+      attempt.mode = "whole";
+      [attempt.verdict, attempt.passed] = await judge(checker, scene, [
+        { caption: "Original room:", dataUrl: room.dataUrl },
+        { caption: "Result:", dataUrl: jpegDataUrl(wholeJpeg) },
+        { caption: "Fabric:", dataUrl: fabric.dataUrl },
+        ...(await closeUps(room.rgb, whole, room.width, room.height)).map((dataUrl) => ({ caption: "Close-up of the result:", dataUrl })),
+      ], costs);
+      if (attempt.passed) {
+        report.status = "accepted";
+        return finish();
+      }
+      attempt.why = `result check: ${attempt.verdict.defects.join(", ") || "low score"} (${attempt.verdict.notes})`;
+      // Curtains that are wrong in the generator's picture are wrong pasted too; only a room it changed is worth
+      // pasting around.
+      const roomOnly = ["ROOM_CHANGED", "FURNITURE_CORRUPTED", "WRONG_WINDOW", "HALLUCINATED_EXTERIOR"];
+      if (!attempt.verdict.defects.length || attempt.verdict.defects.some((d) => !roomOnly.includes(d))) continue;
+    }
+
+    // Paste: pull the curtains' colour back to the fabric's, then paste the new curtains and rod, and wherever the
+    // old curtains were (the generator removed them there).
+    attempt.mode = "paste";
     attempt.colour = lockFabricColour(aligned, drapes, fabricColour);
     // Then give them the room's light: Muse Image lights every curtain alike, even in a shaded far corner.
     if (req.relight ?? true) {
@@ -370,7 +416,6 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // The margin is kept to a few pixels: anything wider pastes the generator's own background around the curtains,
     // lighter and softer than the photo's, and shows as a halo, worst under the hems where the merging also fills
     // the gaps between folds.
-    const grow = Math.max(2, Math.round(room.width * 0.0015));
     const solid = close(
       dropSmall(union([drapes, rodMask, replaced], size), room.width, room.height, Math.round(size * 0.002)),
       room.width,
@@ -386,15 +431,6 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
       { mask: paste, colour: [0, 220, 120], alpha: 0.4 },
     ]);
     report.image = finalJpeg;
-
-    if (attempt.geometry.curtainCoverage < LIMITS.minCoverage) {
-      attempt.why = "no new curtains found on the result";
-      continue;
-    }
-    if (attempt.geometry.curtainsInsideRegion < LIMITS.minInside) {
-      attempt.why = `curtains spill outside the window area (${(attempt.geometry.curtainsInsideRegion * 100).toFixed(0)}% inside)`;
-      continue;
-    }
 
     [attempt.verdict, attempt.passed] = await judge(checker, scene, [
       { caption: "Original room:", dataUrl: room.dataUrl },

@@ -182,6 +182,12 @@ export async function applyAlignment(result: Buffer, width: number, height: numb
  * `outline` comes from windowOutline. Returns 0 when nothing of the outline is visible to compare.
  */
 export async function windowMatch(original: Buffer, aligned: Buffer, width: number, height: number, outline: Mask): Promise<number> {
+  return regionMatch(original, aligned, width, height, outline, 0.4);
+}
+
+/** The grey difference over `mask` after alignment at the given percentile (0..255); 0 when too little is visible. */
+export async function regionMatch(original: Buffer, aligned: Buffer, width: number, height: number, mask: Mask, percentile: number): Promise<number> {
+  const outline = mask;
   const tw = 512;
   const th = Math.round((tw * height) / width);
   const a = await grey(original, width, height, tw, th);
@@ -191,7 +197,7 @@ export async function windowMatch(original: Buffer, aligned: Buffer, width: numb
   for (let i = 0; i < tw * th; i++) if ((m[i] ?? 0) >= 128) diffs.push(Math.abs((a[i] ?? 0) - (b[i] ?? 0)));
   if (diffs.length < 50) return 0;
   diffs.sort((x, y) => x - y);
-  return diffs[Math.floor(diffs.length * 0.4)]!;
+  return diffs[Math.floor(diffs.length * percentile)]!;
 }
 
 /** The band along the window's border, minus whatever the new curtains and rod cover. */

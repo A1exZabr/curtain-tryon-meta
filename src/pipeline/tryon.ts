@@ -23,7 +23,7 @@ import { fabricLab, lockFabricColour, rgbToLab, type ColourLock } from "./colour
 import { lightImage, relightCurtains, roomLight } from "./light.ts";
 import { estimateFabric, STYLES, styleById, styleSample, type CurtainStyle, type FabricEstimate } from "./styles.ts";
 import { closeUps, jpegDataUrl, loadPhoto, rgbToJpeg, toSize, type Photo } from "./images.ts";
-import { allowedRegion, and, area, close, dilate, dropSmall, erode, mainWindows, union, type Mask } from "./region.ts";
+import { allowedRegion, and, area, close, dilate, dropSmall, erode, mainWindows, pieceBoxes, union, type Mask } from "./region.ts";
 
 export interface TryOnRequest {
   room: Buffer;
@@ -412,8 +412,20 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     // The margin is kept to a few pixels: anything wider pastes the generator's own background around the curtains,
     // lighter and softer than the photo's, and shows as a halo, worst under the hems where the merging also fills
     // the gaps between folds.
+    // SAM often misses a thin rod or the rings, and a drape pasted without them hangs from nothing. Over each drape's
+    // top, the pixels the generator changed (the rod, rings, a track) come along.
+    const rodBand = new Uint8Array(size);
+    for (const b of pieceBoxes(drapes, room.width, room.height, Math.round(size * 0.002))) {
+      const y1 = Math.max(0, b.y1 - Math.round(room.height * 0.03)), y2 = Math.min(room.height - 1, b.y1 + Math.round(room.height * 0.01));
+      const x1 = Math.max(0, b.x1 - Math.round(room.width * 0.02)), x2 = Math.min(room.width - 1, b.x2 + Math.round(room.width * 0.02));
+      for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) {
+        const i = y * room.width + x, j = i * 3;
+        const d = Math.abs(room.rgb[j]! - aligned[j]!) + Math.abs(room.rgb[j + 1]! - aligned[j + 1]!) + Math.abs(room.rgb[j + 2]! - aligned[j + 2]!);
+        if (d > 60 && region[i]) rodBand[i] = 1;
+      }
+    }
     const solid = close(
-      dropSmall(union([drapes, rodMask, replaced], size), room.width, room.height, Math.round(size * 0.002)),
+      dropSmall(union([drapes, rodMask, replaced, rodBand], size), room.width, room.height, Math.round(size * 0.002)),
       room.width,
       room.height,
       Math.round(room.width * 0.005),

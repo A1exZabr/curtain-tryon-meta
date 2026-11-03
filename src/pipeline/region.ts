@@ -148,6 +148,31 @@ export function close(mask: Mask, width: number, height: number, r: number): Mas
   return erode(dilate(mask, width, height, r), width, height, r);
 }
 
+/** Bounding boxes of the connected pieces of a mask with at least `minArea` pixels. */
+export function pieceBoxes(mask: Mask, width: number, height: number, minArea: number): { x1: number; y1: number; x2: number; y2: number }[] {
+  const seen = new Uint8Array(mask.length);
+  const boxes: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  const stack: number[] = [];
+  for (let start = 0; start < mask.length; start++) {
+    if (!mask[start] || seen[start]) continue;
+    seen[start] = 1;
+    stack.push(start);
+    let n = 0, x1 = width, y1 = height, x2 = 0, y2 = 0;
+    while (stack.length) {
+      const i = stack.pop()!;
+      n++;
+      const x = i % width, y = (i - x) / width;
+      if (x < x1) x1 = x; if (x > x2) x2 = x; if (y < y1) y1 = y; if (y > y2) y2 = y;
+      if (x > 0 && mask[i - 1] && !seen[i - 1]) { seen[i - 1] = 1; stack.push(i - 1); }
+      if (x < width - 1 && mask[i + 1] && !seen[i + 1]) { seen[i + 1] = 1; stack.push(i + 1); }
+      if (y > 0 && mask[i - width] && !seen[i - width]) { seen[i - width] = 1; stack.push(i - width); }
+      if (y < height - 1 && mask[i + width] && !seen[i + width]) { seen[i + width] = 1; stack.push(i + width); }
+    }
+    if (n >= minArea) boxes.push({ x1, y1, x2, y2 });
+  }
+  return boxes;
+}
+
 /** Drops connected pieces smaller than `minArea` pixels (SAM leaves crumbs where curtains peek behind furniture). */
 export function dropSmall(mask: Mask, width: number, height: number, minArea: number): Mask {
   const out = mask.slice();

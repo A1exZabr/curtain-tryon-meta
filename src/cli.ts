@@ -18,6 +18,7 @@ const { values } = parseArgs({
     attempts: { type: "string" },
     "no-light-hint": { type: "boolean" },
     "style-id": { type: "string" },
+    "paste-only": { type: "boolean" },
     "style-samples": { type: "boolean" },
   },
 });
@@ -33,6 +34,7 @@ const report = await tryOn({
   maxAttempts: values.attempts ? Number(values.attempts) : undefined,
   lightHint: !values["no-light-hint"],
   styleId: values["style-id"],
+  whole: !values["paste-only"],
   styleSamples: values["style-samples"],
 });
 

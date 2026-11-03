@@ -15,20 +15,39 @@ function setupCompare(el) {
     set(((e.clientX - r.left) / r.width) * 100);
   };
   let dragging = false;
-  el.addEventListener("pointerdown", (e) => { dragging = true; el.setPointerCapture(e.pointerId); fromEvent(e); });
+  el.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    // Without this a mouse drag starts a text selection that runs over the photos and paints them blue.
+    e.preventDefault();
+    dragging = true;
+    el.setPointerCapture(e.pointerId);
+    fromEvent(e);
+  });
   el.addEventListener("pointermove", (e) => { if (dragging) fromEvent(e); });
-  el.addEventListener("pointerup", () => { dragging = false; });
+  const stop = () => { dragging = false; };
+  el.addEventListener("pointerup", stop);
+  el.addEventListener("pointercancel", stop);
+  el.addEventListener("lostpointercapture", stop);
+  el.addEventListener("dragstart", (e) => e.preventDefault());
   tape.addEventListener("keydown", (e) => {
     const now = Number(tape.getAttribute("aria-valuenow"));
-    if (e.key === "ArrowLeft") { set(now - 5); e.preventDefault(); }
-    if (e.key === "ArrowRight") { set(now + 5); e.preventDefault(); }
+    const to = { ArrowLeft: now - 5, ArrowRight: now + 5, Home: 0, End: 100 }[e.key];
+    if (to !== undefined) { set(to); e.preventDefault(); }
   });
   return {
     show(before, after) {
       const img = $(".compare-after", el);
-      img.onload = () => { el.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`; };
+      // The result keeps the photo's own shape, but never taller than most of the screen.
+      if (el.dataset.fit === "natural") {
+        img.onload = () => {
+          const ratio = img.naturalWidth / img.naturalHeight;
+          el.style.aspectRatio = String(ratio);
+          el.style.width = `min(100%, calc(80svh * ${ratio.toFixed(4)}))`;
+        };
+      }
       $(".compare-before", el).src = before;
       img.src = after;
+      if (el.dataset.fit !== "natural") el.style.setProperty("--backdrop", `url("${after}")`);
       set(50);
     },
   };
@@ -42,6 +61,7 @@ async function loadGallery() {
   const items = await fetch("/api/gallery").then((r) => (r.ok ? r.json() : [])).catch(() => []);
   const box = $("#gallery");
   if (!items.length) return;
+  $("#gallery-note").hidden = items.length < 2;
   const pick = (item, button) => {
     hero.show(item.before, item.after);
     $("#hero-caption").textContent = item.caption ?? "";
@@ -87,6 +107,7 @@ document.querySelectorAll(".drop").forEach((drop) => {
     photos[key] = await shrink(file);
     $("img", drop).src = photos[key];
     drop.classList.add("filled");
+    $(".drop-action", drop).textContent = "Change";
   };
   input.addEventListener("change", () => take(input.files[0]));
   drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("drag"); });
@@ -236,7 +257,7 @@ function showResult(r) {
     verdict.textContent = r.clientMessage || "These photos won't work for a try-on. Send a room with the window in the frame and a close-up of the fabric.";
   } else {
     verdict.className = "verdict no";
-    verdict.textContent = `No result passed the checks this time (${r.reason}). Nothing is shown rather than a bad picture. Try another photo.`;
+    verdict.textContent = `No try-on passed the checks this time: ${r.reason}. We show nothing rather than a bad picture. Try another photo of the room.`;
   }
   if (r.image && r.status === "accepted") {
     resultCompare.show(r.before, r.image);

@@ -1,57 +1,110 @@
+/* ZabSoft Display: the company's heading face (Mona Sans Expanded, modified; SIL OFL, see /fonts/OFL.txt). */
+@font-face {
+  font-family: "ZabSoft Display"; src: url("/fonts/zabsoft-display.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
 :root {
   --daylight: #e7edf0;   /* page: cool light from a window */
   --paper: #ffffff;
   --thread: #1c2b36;     /* text: dark denim thread */
   --muted: #5f6f7a;
   --line: #c9d3d9;
+  --shade: #d3dce1;      /* empty space around a photo that doesn't fill its frame */
   --tape: #f2c230;       /* the one accent: a tailor's measuring tape */
   --tape-ink: #3a2e05;
   --ok: #2f7d55;
   --bad: #b23b2e;
-  --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --display: "ZabSoft Display", "Arial Black", Arial, sans-serif;
   --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   --gutter: clamp(16px, 4vw, 48px);
+  --max: 1280px;
+  /* Side padding of every band: the gutter on small screens, centred content on wide ones. */
+  --pad: max(var(--gutter), calc((100% - var(--max)) / 2));
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 16px; }
 body {
   margin: 0;
   background: var(--daylight);
   color: var(--thread);
   font: 400 17px/1.55 var(--body);
+  font-synthesis: none;
 }
 img { display: block; max-width: 100%; }
 a { color: inherit; }
+button { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--tape); outline-offset: 2px; }
 
+/* --- Header ----------------------------------------------------------------------------------------------- */
 .top {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  padding: 18px var(--gutter);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px 24px; flex-wrap: wrap;
+  padding: 18px var(--pad);
 }
-.brand { font: 700 20px/1 var(--display); text-decoration: none; }
+.brand { font: 700 19px/1.2 var(--display); text-decoration: none; }
 .brand span { font: 400 15px/1 var(--body); color: var(--muted); margin-left: 6px; }
 .top nav { display: flex; gap: 20px; font-size: 15px; }
-.top nav a { text-decoration: none; border-bottom: 1px solid transparent; }
+.top nav a { text-decoration: none; border-bottom: 1px solid transparent; padding: 4px 0; }
 .top nav a:hover { border-bottom-color: currentColor; }
+.top nav { margin-left: auto; }
 
-main { padding: 0 var(--gutter); }
-h1, h2 { font-family: var(--display); font-weight: 700; letter-spacing: -0.02em; margin: 0; }
-h1 { font-size: clamp(40px, 6vw, 76px); line-height: 0.98; max-width: 11ch; }
-h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.05; margin-bottom: 12px; }
+/* "Made by ZabSoft": the full wordmark only (the separate Z sign isn't used). */
+.made-by { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--muted); font-size: 14px; line-height: 1; }
+.made-by img { height: 22px; width: auto; }
+.made-by:hover img { opacity: 0.8; }
+.top .made-by { align-self: center; padding-left: 20px; border-left: 1px solid var(--line); }
 
+/* --- Type ------------------------------------------------------------------------------------------------- */
+h1, h2 { font-family: var(--display); font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+h2 { text-wrap: balance; }
+/* The face is expanded, so it runs about a quarter wider than an ordinary grotesque at the same size. */
+h1 { font-size: clamp(34px, 4.4vw, 58px); line-height: 1.02; max-width: 12ch; }
+h2 { font-size: clamp(26px, 2.8vw, 34px); line-height: 1.1; margin-bottom: 12px; }
+
+/* --- Hero: title and text on the left, the comparison on the right; on a phone the picture comes right after
+   the title, so the first screen shows what the page does. ---------------------------------------------------- */
 .hero {
-  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 8fr); gap: clamp(24px, 4vw, 64px);
-  align-items: start; padding: clamp(16px, 4vw, 48px) 0 clamp(40px, 6vw, 80px);
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+  grid-template-areas: "title figure" "text figure";
+  grid-template-rows: auto 1fr;
+  gap: 24px clamp(24px, 4vw, 64px);
+  padding: clamp(16px, 4vw, 48px) var(--pad) clamp(40px, 6vw, 80px);
 }
-.hero-text { padding-top: 8px; }
-.lede { font-size: 19px; max-width: 34em; margin: 24px 0 16px; }
+.hero h1 { grid-area: title; padding-top: 8px; }
+.hero-text { grid-area: text; }
+.hero-compare { grid-area: figure; margin: 0; min-width: 0; }
+.lede { font-size: 19px; max-width: 34em; margin: 0 0 16px; }
 .built { color: var(--muted); font-size: 15px; max-width: 34em; margin: 0; }
+#hero-caption { font-size: 14px; color: var(--muted); padding-top: 8px; min-height: 1.55em; }
 
-/* Before/after: the "after" image is the base, the "before" is clipped on top. The divider is a tape measure. */
-.compare { position: relative; overflow: hidden; background: var(--paper); user-select: none; touch-action: pan-y; aspect-ratio: 3 / 2; }
-.compare img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+/* --- Before/after: the "after" image is the base, the "before" is clipped on top, the divider is a tape
+   measure. Nothing inside can be selected or dragged away, so moving the tape never paints a selection. --- */
+.compare {
+  position: relative; overflow: hidden; background: var(--shade); aspect-ratio: 3 / 2;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y; cursor: ew-resize;
+}
+.compare img {
+  width: 100%; height: 100%; object-fit: cover; pointer-events: none;
+  -webkit-user-drag: none; -webkit-user-select: none; user-select: none;
+}
+/* The hero keeps one frame for every example, so switching between a wide and a tall room doesn't move the page;
+   a tall photo sits on a blurred copy of itself instead of grey bars. */
+.compare-box img { object-fit: contain; }
+.compare-box .compare-after { position: relative; }
+.compare-box::before {
+  content: ""; position: absolute; inset: -32px; background: var(--backdrop, none) center / cover;
+  filter: blur(28px) saturate(0.8) brightness(0.92);
+}
 .compare-before-wrap { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--pos, 50%)) 0 0); }
+.compare-label {
+  position: absolute; bottom: 10px; padding: 2px 8px; font-size: 13px; font-weight: 500;
+  background: rgba(255, 255, 255, 0.88); color: var(--thread); pointer-events: none;
+}
+.compare-label.is-before { left: 10px; }
+.compare-label.is-after { right: 10px; }
 .tape {
   position: absolute; top: 0; bottom: 0; left: var(--pos, 50%); width: 26px; transform: translateX(-50%);
   background:
@@ -59,100 +112,154 @@ h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.05; margin-bottom: 12px
     repeating-linear-gradient(to bottom, var(--tape-ink) 0 1px, transparent 1px 50px) left / 13px 100% no-repeat,
     var(--tape);
   box-shadow: 0 0 0 1px rgba(58, 46, 5, 0.25);
-  cursor: ew-resize;
 }
-.hero-compare { margin: 0; }
-.hero-compare figcaption { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--muted); padding: 8px 0 0; }
-#hero-caption { text-align: center; }
+.tape:focus-visible { outline-offset: -3px; outline-color: var(--thread); }
 
-.swatches { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.swatch-note { font-size: 14px; color: var(--muted); margin: 14px 0 6px; }
+.swatches { display: flex; gap: 10px; flex-wrap: wrap; }
 .swatch {
   width: 64px; height: 64px; padding: 0; border: 0; cursor: pointer; background: var(--paper);
   clip-path: polygon(0 0, 100% 0, 100% 86%, 92% 100%, 84% 86%, 76% 100%, 68% 86%, 60% 100%, 52% 86%, 44% 100%, 36% 86%, 28% 100%, 20% 86%, 12% 100%, 4% 86%, 0 94%);
 }
 .swatch img { width: 100%; height: 100%; object-fit: cover; }
-.swatch[aria-pressed="true"] { outline: 3px solid var(--thread); outline-offset: 2px; }
+/* clip-path cuts an outline off, so the chosen swatch is marked by a strip of tape under it. */
+.swatch { position: relative; }
+.swatch::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 6px; background: transparent; }
+.swatch[aria-pressed="true"]::after { background: var(--tape); }
+.swatch:focus-visible { clip-path: none; }
 
-.try { background: var(--paper); margin: 0 calc(-1 * var(--gutter)); padding: clamp(32px, 5vw, 64px) var(--gutter); }
+/* --- Try it ----------------------------------------------------------------------------------------------- */
+.try { background: var(--paper); padding: clamp(32px, 5vw, 64px) var(--pad); }
 .hint { color: var(--muted); max-width: 40em; margin: 0 0 24px; }
 .drops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .drop {
-  position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px;
-  min-height: 190px; padding: 16px; border: 2px dashed var(--line); cursor: pointer; overflow: hidden;
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 2px;
+  min-height: 190px; padding: 16px; border: 2px dashed var(--line); background: var(--paper); cursor: pointer; overflow: hidden;
 }
 .drop:hover, .drop.drag { border-color: var(--thread); }
-.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+.drop:focus-within { outline: 3px solid var(--tape); outline-offset: 2px; }
+.drop input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none; }
+.drop.filled { border-style: solid; border-color: var(--thread); }
 .drop.filled img { opacity: 1; }
-.drop.filled strong, .drop.filled span { position: relative; background: var(--paper); align-self: flex-start; padding: 0 6px; }
-.drop strong { font: 700 20px/1.2 var(--display); }
-.drop span { color: var(--muted); font-size: 15px; }
+.drop strong { font: 700 17px/1.25 var(--display); }
+.drop-hint { color: var(--muted); font-size: 15px; line-height: 1.35; }
+.drop-action {
+  position: absolute; top: 12px; left: 12px; font-size: 14px; font-weight: 500; padding: 4px 10px;
+  border: 1px solid var(--thread); background: var(--paper); pointer-events: none;
+}
+.drop strong, .drop-hint { position: relative; pointer-events: none; }
+.drop.filled strong, .drop.filled .drop-hint { background: var(--paper); padding: 0 6px; }
 .drop.optional { border-style: dotted; }
 
 .wish { margin: 20px 0 0; max-width: 760px; }
 .wish label { display: block; font-weight: 500; margin-bottom: 6px; }
 .wish-row { display: flex; gap: 10px; }
-.wish input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border: 1px solid var(--line); background: var(--daylight); color: inherit; }
-.mic { font: 500 15px var(--body); padding: 0 16px; border: 1px solid var(--thread); background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
+.wish input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border: 1px solid var(--line); background: var(--daylight); color: inherit; border-radius: 0; }
+.wish input:focus { border-color: var(--thread); outline: none; box-shadow: 0 0 0 2px var(--tape); }
+.mic {
+  font-size: 15px; font-weight: 500; padding: 0 16px; min-height: 48px; border: 1px solid var(--thread); background: transparent;
+  cursor: pointer; white-space: nowrap; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none;
+}
 .mic[aria-pressed="true"] { background: var(--bad); border-color: var(--bad); color: #fff; }
 .mic-note { font-size: 14px; color: var(--muted); margin: 6px 0 0; }
 
 .go {
-  margin-top: 24px; font: 700 20px/1 var(--display); padding: 18px 28px; border: 0; cursor: pointer;
+  margin-top: 24px; font: 700 18px/1 var(--display); padding: 18px 28px; border: 0; cursor: pointer;
   background: var(--thread); color: var(--paper);
 }
-.go:disabled { opacity: 0.5; cursor: progress; }
-.form-error { color: var(--bad); font-weight: 500; }
+.go:hover { background: #0f1b24; }
+.go:disabled { opacity: 0.6; cursor: progress; }
+.form-error { color: var(--bad); font-weight: 500; margin: 12px 0 0; }
 
-.steps { list-style: none; counter-reset: step; padding: 0; margin: 36px 0 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
-.steps li { counter-increment: step; padding: 14px 14px 14px 0; color: var(--muted); font-size: 14px; position: relative; }
-.steps li::before { content: counter(step); display: block; font: 700 28px/1 var(--display); color: var(--line); margin-bottom: 6px; }
-.steps li b { display: block; color: var(--thread); font-size: 16px; font-weight: 600; }
+.steps {
+  list-style: none; counter-reset: step; padding: 0; margin: 36px 0 0;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line);
+}
+.steps li { counter-increment: step; padding: 14px 14px 14px 0; color: var(--muted); font-size: 14px; line-height: 1.45; position: relative; }
+.steps li::before { content: counter(step); display: block; font: 700 26px/1 var(--display); color: var(--line); margin-bottom: 8px; }
+.steps li b { display: block; color: var(--thread); font-size: 16px; font-weight: 600; margin-bottom: 2px; }
 .steps li.active::before { color: var(--tape); }
 .steps li.active { color: var(--thread); }
-.steps li.active::after { content: ""; position: absolute; top: -1px; left: 0; right: 14px; height: 3px; background: var(--tape); animation: sew 1.2s linear infinite; background-size: 24px 3px; background-image: repeating-linear-gradient(90deg, var(--tape) 0 14px, transparent 14px 24px); }
+.steps li.active::after {
+  content: ""; position: absolute; top: -1px; left: 0; right: 14px; height: 3px;
+  background-image: repeating-linear-gradient(90deg, var(--tape) 0 14px, transparent 14px 24px); background-size: 24px 3px;
+  animation: sew 1.2s linear infinite;
+}
 .steps li.done::before { color: var(--thread); }
 @keyframes sew { to { background-position: 24px 0; } }
 
+/* --- Result ----------------------------------------------------------------------------------------------- */
 .result { margin-top: 32px; max-width: 1100px; }
-.verdict { font-size: 18px; margin: 14px 0; }
+.result .compare { max-width: 100%; }
+.verdict { font-size: 18px; margin: 14px 0; max-width: 46em; }
 .verdict.ok { color: var(--ok); }
 .verdict.no { color: var(--bad); }
-.inside summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
-.inside-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.inside summary { cursor: pointer; font-weight: 600; padding: 8px 0; width: max-content; max-width: 100%; }
+.inside-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
 .inside-grid figure { margin: 0; }
+.inside-grid img { width: 100%; background: var(--shade); }
 .inside-grid figcaption { font-size: 14px; color: var(--muted); padding-top: 6px; }
-.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 20px 0; font-size: 15px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 16px; margin: 20px 0; font-size: 15px; }
 .facts dt { color: var(--muted); }
-.facts dd { margin: 0; }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.table-scroll { overflow-x: auto; }
 .costs { border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; min-width: min(100%, 460px); }
 .costs caption { text-align: left; font-weight: 600; padding-bottom: 6px; }
 .costs th, .costs td { text-align: left; padding: 5px 16px 5px 0; border-bottom: 1px solid var(--line); }
-.costs td:nth-child(n+2), .costs th:nth-child(n+2) { text-align: right; }
+.costs td:nth-child(n+2), .costs th:nth-child(n+2) { text-align: right; white-space: nowrap; }
+.costs td:last-child, .costs th:last-child { padding-right: 0; }
 .costs tfoot td { font-weight: 600; border-bottom: 0; }
 
-.how { padding: clamp(40px, 6vw, 80px) 0; }
+/* --- How it works ----------------------------------------------------------------------------------------- */
+.how { padding: clamp(40px, 6vw, 80px) var(--pad); }
 .how-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); }
 .how-cols p { margin: 0; max-width: 36em; }
-.numbers { display: flex; flex-wrap: wrap; gap: 32px; margin-top: 32px; }
+.numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 24px; margin-top: 40px; }
 .numbers div { font-size: 15px; color: var(--muted); max-width: 16em; }
-.numbers b { display: block; font: 700 40px/1 var(--display); color: var(--thread); margin-bottom: 4px; }
+.numbers b { display: block; font: 700 36px/1 var(--display); color: var(--thread); margin-bottom: 8px; }
 
-footer { padding: 24px var(--gutter) 40px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+footer {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 16px 40px;
+  padding: 28px var(--pad) 40px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line);
+}
+footer .made-by img { height: 30px; }
+footer p { margin: 0; max-width: 60em; flex: 1 1 320px; }
 
+/* --- Smaller screens -------------------------------------------------------------------------------------- */
 @media (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; }
+  /* Brand and "Made by" share the first row, the links go under them. */
+  .top nav { order: 3; width: 100%; margin-left: 0; }
+  .top .made-by { order: 2; margin-left: auto; padding-left: 0; border-left: 0; }
+  .hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "figure" "text"; grid-template-rows: auto; }
+  .hero h1 { max-width: 14ch; }
   .drops { grid-template-columns: 1fr 1fr; }
   .drops .optional { grid-column: span 2; min-height: 120px; }
-  .steps { grid-template-columns: 1fr; }
-  .steps li { padding: 10px 0; border-bottom: 1px solid var(--line); }
-  .how-cols, .inside-grid { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: minmax(0, 1fr); }
+  .steps li { display: grid; grid-template-columns: 32px minmax(0, 1fr); padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .steps li::before { grid-row: span 2; font-size: 22px; margin: 0; }
+  .steps li.active::after { right: 0; }
+  .how-cols, .inside-grid { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 520px) {
-  .drops { grid-template-columns: 1fr; }
-  .drops .optional { grid-column: auto; }
+@media (max-width: 560px) {
+  body { font-size: 16px; }
+  .brand span { display: block; margin: 4px 0 0; }
+  .top { align-items: flex-start; }
+  .top .made-by { gap: 6px; font-size: 13px; }
+  .top .made-by img { height: 19px; }
+  .lede { font-size: 17px; }
+  .drop { min-height: 150px; padding: 12px; }
+  .drop strong { font-size: 16px; }
+  .drop-hint { font-size: 14px; }
+  .drops .optional { min-height: 128px; }
   .wish-row { flex-direction: column; }
   .mic { padding: 12px; }
+  .go { width: 100%; }
+  .swatches { gap: 8px; }
+  .swatch { width: 48px; height: 48px; }
+  .facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .facts dd { margin-bottom: 8px; }
+  .numbers b { font-size: 30px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .steps li.active::after { animation: none; }

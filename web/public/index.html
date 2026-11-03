@@ -7,8 +7,9 @@
   <meta name="description" content="Send a photo of your room and a photo of a fabric, and see those curtains on your own window. Built on SAM 3.1, Muse Image, Muse Spark Open and Muse Voice Transcribe.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="preload" href="/fonts/zabsoft-display.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/style.css?v=8">
 </head>
 <body>
   <header class="top">
@@ -18,26 +19,28 @@
       <a href="#how">How it works</a>
       <a href="https://github.com/A1exZabr/curtain-tryon-meta">Code</a>
     </nav>
+    <a class="made-by" href="https://zabsoft.com" aria-label="Made by ZabSoft">
+      <span>Made by</span><img src="/brand/zabsoft-logo-dark.svg" alt="" width="109" height="22">
+    </a>
   </header>
 
   <main>
     <section class="hero">
+      <h1>See the fabric on your own window.</h1>
       <div class="hero-text">
-        <h1>See the fabric on your own window.</h1>
         <p class="lede">A curtain salon's client picks a fabric from a swatch and has to imagine it at home. Send a photo of the room and a photo of the fabric, and get the same room with those curtains. Only the curtains change: every other pixel of the photo stays as it was.</p>
         <p class="built">CurtainBot, a try-on bot for curtain salons, existed before the hackathon. This try-on engine on Meta models was built during it.</p>
       </div>
       <figure class="hero-compare">
-        <div class="compare" id="hero-compare" aria-label="Before and after comparison">
-          <img class="compare-after" alt="Room with the new curtains">
-          <div class="compare-before-wrap"><img class="compare-before" alt="Room before"></div>
+        <div class="compare compare-box" id="hero-compare" aria-label="Before and after comparison">
+          <img class="compare-after" alt="Room with the new curtains" draggable="false">
+          <div class="compare-before-wrap"><img class="compare-before" alt="Room before" draggable="false"></div>
+          <span class="compare-label is-before">Before</span>
+          <span class="compare-label is-after">After</span>
           <div class="tape" role="slider" tabindex="0" aria-label="Drag to compare before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>
         </div>
-        <figcaption>
-          <span class="cap-before">Before</span>
-          <span id="hero-caption"></span>
-          <span class="cap-after">After</span>
-        </figcaption>
+        <figcaption id="hero-caption"></figcaption>
+        <p class="swatch-note" id="gallery-note" hidden>Pick a fabric to see another room.</p>
         <div class="swatches" id="gallery" aria-label="Examples"></div>
       </figure>
     </section>
@@ -48,22 +51,25 @@
       <form id="form">
         <div class="drops">
           <label class="drop" data-for="room">
-            <input type="file" name="room" accept="image/*" required>
-            <img alt="">
+            <input type="file" name="room" accept="image/*">
+            <img alt="" draggable="false">
+            <span class="drop-action">Add photo</span>
             <strong>Your room</strong>
-            <span>A photo with the window in it</span>
+            <span class="drop-hint">A photo with the window in it</span>
           </label>
           <label class="drop" data-for="fabric">
-            <input type="file" name="fabric" accept="image/*" required>
-            <img alt="">
+            <input type="file" name="fabric" accept="image/*">
+            <img alt="" draggable="false">
+            <span class="drop-action">Add photo</span>
             <strong>Your fabric</strong>
-            <span>A close-up of the swatch</span>
+            <span class="drop-hint">A close-up of the swatch</span>
           </label>
           <label class="drop optional" data-for="style">
             <input type="file" name="style" accept="image/*">
-            <img alt="">
+            <img alt="" draggable="false">
+            <span class="drop-action">Add photo</span>
             <strong>How it's sewn</strong>
-            <span>Optional: a photo of curtains you like</span>
+            <span class="drop-hint">Optional: a photo of curtains you like</span>
           </label>
         </div>
         <div class="wish">
@@ -87,9 +93,11 @@
       </ol>
 
       <div class="result" id="result" hidden>
-        <div class="compare" id="result-compare" aria-label="Your result">
-          <img class="compare-after" alt="Your room with the new curtains">
-          <div class="compare-before-wrap"><img class="compare-before" alt="Your room before"></div>
+        <div class="compare" id="result-compare" aria-label="Your result" data-fit="natural">
+          <img class="compare-after" alt="Your room with the new curtains" draggable="false">
+          <div class="compare-before-wrap"><img class="compare-before" alt="Your room before" draggable="false"></div>
+          <span class="compare-label is-before">Before</span>
+          <span class="compare-label is-after">After</span>
           <div class="tape" role="slider" tabindex="0" aria-label="Drag to compare before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div>
         </div>
         <p class="verdict" id="verdict"></p>
@@ -100,7 +108,7 @@
             <figure><img id="paste" alt="Pixels taken from the generated image"><figcaption>Green: the only pixels taken from Muse Image. Everything else is your original photo.</figcaption></figure>
           </div>
           <dl class="facts" id="facts"></dl>
-          <table class="costs" id="costs"><caption>Every model call for this try-on</caption><thead><tr><th>Call</th><th>Time</th><th>Cost</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
+          <div class="table-scroll"><table class="costs" id="costs"><caption>Every model call for this try-on</caption><thead><tr><th>Call</th><th>Time</th><th>Cost</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
         </details>
       </div>
     </section>
@@ -110,15 +118,18 @@
       <div class="how-cols">
         <p>Image generators are good at curtains and bad at leaving everything else alone. Asked to change one thing, they redraw the whole frame: furniture shifts, the view outside changes, colours drift. A salon can't charge for that.</p>
         <p>So the generator never gets the last word. SAM 3.1 decides where curtains may go, Muse Image only supplies the curtains, and the engine pastes them into the original photo. Every pixel outside the curtains is the client's own photo. The fabric's colour is measured on the swatch and the curtains are pulled back to it, keeping their folds and shadows.</p>
-        <p>Two checks frame the generation. Before it, Muse Spark Open, Meta's open-weight model, refuses a photo with no window or no fabric, for free, and tells the client what to send instead. After it, the engine checks the window hasn't moved and the curtains stay in their area, and Muse Spark Open compares them with the fabric. A result that fails is generated again, and the client only ever sees one that passed.</p>
+        <p>Two checks frame the generation. Before it, Muse Spark Open, Meta's open-weight model, refuses a photo with no window or no fabric for under two cents, before anything is generated, and tells the client what to send instead. After it, the engine checks the window hasn't moved and the curtains stay in their area, and Muse Spark Open compares them with the fabric. A result that fails is generated again, and the client only ever sees one that passed.</p>
       </div>
       <div class="numbers" id="numbers"></div>
     </section>
   </main>
 
   <footer>
-    <p>Made by ZabSoft LLC, Batumi, Georgia, for the Meta Global AI Developer Hackathon. Photos you send go to Meta's and Baseten's APIs for your try-on; this demo doesn't store them.</p>
+    <a class="made-by" href="https://zabsoft.com" aria-label="Made by ZabSoft">
+      <span>Made by</span><img src="/brand/zabsoft-logo-dark.svg" alt="" width="149" height="30">
+    </a>
+    <p>ZabSoft LLC, Batumi, Georgia, for the Meta Global AI Developer Hackathon. Photos you send go to Meta's and Baseten's APIs for your try-on; this demo doesn't store them.</p>
   </footer>
-  <script src="/app.js" type="module"></script>
+  <script src="/app.js?v=6" type="module"></script>
 </body>
 </html>

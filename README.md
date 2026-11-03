@@ -12,6 +12,8 @@ Live demo: **https://tryon.zabsoft.com** (built for the Meta Global AI Developer
 salon clients order try-ons, with accounts, payments and an operator panel. It ran on a general image-editing
 model and failed often. **Everything in this repository was written during the hackathon (October 27 to November
 4, 2026)**: a new try-on engine on Meta's models, its demo page and its evaluation. No CurtainBot code is in here.
+The only things the demo page takes from before are ZabSoft's brand assets: the ZabSoft wordmark and the ZabSoft
+Display heading font (a modified Mona Sans under the SIL Open Font License, see `web/public/fonts/OFL.txt`).
 
 ## Why a pipeline and not one prompt
 
@@ -128,6 +130,7 @@ ops/            probes used while building (live API smoke test, diff maps, cali
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The evaluation photos keep their own licences.
+MIT, see [LICENSE](LICENSE). The evaluation photos keep their own licences. The ZabSoft wordmark is ZabSoft LLC's
+trademark and is not covered by the MIT license; the ZabSoft Display font is under the SIL Open Font License 1.1.
 
 Made by ZabSoft LLC, Batumi, Georgia.

@@ -3,12 +3,13 @@ import type { Segment } from "../meta/sam.ts";
 export type Mask = Uint8Array; // width * height, 0 or 1
 
 /**
- * Windows worth dressing: SAM also finds small panes, reflections and pictures, so keep only windows at least a
- * quarter the size of the largest one and at least 1% of the frame.
+ * Windows worth dressing: SAM also finds specks, reflections and tiny panes, so keep windows of at least 0.5% of
+ * the frame. The bar relative to the largest window stays low on purpose: in a room with a row of windows the far
+ * ones look ten or twenty times smaller than the near one, and they get curtains too.
  */
 export function mainWindows(windows: Segment[], width: number, height: number): Segment[] {
   const largest = Math.max(0, ...windows.map((w) => w.area));
-  return windows.filter((w) => w.area >= largest * 0.25 && w.area >= width * height * 0.01);
+  return windows.filter((w) => w.area >= largest * 0.04 && w.area >= width * height * 0.005);
 }
 
 /**

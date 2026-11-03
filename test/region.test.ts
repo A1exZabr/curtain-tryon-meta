@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { close, dilate, dropSmall, erode } from "../src/pipeline/region.ts";
+import { close, dilate, dropSmall, erode, mainWindows } from "../src/pipeline/region.ts";
 import { changedOutside } from "../src/pipeline/tryon.ts";
 import { composite } from "../src/pipeline/composite.ts";
 
@@ -28,6 +28,13 @@ test("dropSmall removes crumbs and keeps large pieces", () => {
   const out = dropSmall(big, W, H, 5);
   assert.equal(out[0], 0);
   assert.equal(count(out), 25);
+});
+
+test("mainWindows keeps the far windows of a row and drops specks", () => {
+  // Shares of a 1000x1000 frame as SAM found them on a room with a row of windows seen in perspective.
+  const window = (share: number) => ({ box: { x1: 0, y1: 0, x2: 1, y2: 1 }, mask: new Uint8Array(0), area: share * 1e6 });
+  const near = window(0.104), mid = window(0.023), far = window(0.006), speck = window(0.002);
+  assert.deepEqual(mainWindows([near, mid, far, speck], 1000, 1000), [near, mid, far]);
 });
 
 test("composite keeps every pixel outside the paste mask byte-for-byte", async () => {

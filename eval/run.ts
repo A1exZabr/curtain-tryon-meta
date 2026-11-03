@@ -68,9 +68,9 @@ async function fetchPhoto(id: string): Promise<Buffer> {
 const STAGES = {
   raw: { paste: false, lightHint: false, relight: false, retryFixes: false, whole: false },
   paste: { lightHint: false, relight: false, retryFixes: false, whole: false },
-  light: { retryFixes: false, whole: false },
+  light: { lightHint: true, retryFixes: false, whole: false },
   // Every stage, always pasting the curtains into the photo.
-  pasted: { whole: false },
+  pasted: { lightHint: true, whole: false },
   // Every stage, showing the generator's whole picture when it kept the room.
   full: {},
 };

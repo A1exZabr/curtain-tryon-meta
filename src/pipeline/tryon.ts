@@ -33,7 +33,8 @@ export interface TryOnRequest {
   wish?: string;
   checker?: CheckerKind;
   maxAttempts?: number;
-  /** Hand Muse Image the room's light map as one more picture, so it lights the curtains like the room (default on). */
+  /** Hand Muse Image the room's light map as one more picture (default off: with it, the generation came out washed
+   * out like sepia and reframed far more often; the median share of the room it redrew went from 25% to 41%). */
   lightHint?: boolean;
   /** The catalogue style the client picked (default "straight"); a style photo, when sent, takes its place. */
   styleId?: string;
@@ -213,7 +214,7 @@ export async function tryOn(req: TryOnRequest): Promise<TryOnReport> {
     : { id: picked.id, name: picked.name, sample: sampleIndex !== undefined, fromClientPhoto: false };
   if (measured) report.estimate = estimateFabric(picked, measured.openings, measured.ceiling_cm);
   let lightIndex: number | undefined;
-  if (req.lightHint ?? true) {
+  if (req.lightHint ?? false) {
     const map = lightImage(roomLight(room.rgb, windowMask, room.width, room.height));
     const jpeg = await sharp(map.data, { raw: { width: map.width, height: map.height, channels: 1 } })
       .resize(room.width, room.height)

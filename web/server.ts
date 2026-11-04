@@ -18,7 +18,7 @@ const GALLERY = process.env.GALLERY_DIR ?? join(import.meta.dirname, "..", "gall
 const TRIES_PER_HOUR = Number(process.env.TRIES_PER_HOUR ?? "6");
 const MAX_RUNNING = Number(process.env.MAX_RUNNING ?? "2");
 // Each waiting try-on holds its photos in memory; past this many the demo says it is busy instead.
-const MAX_QUEUED = Number(process.env.MAX_QUEUED ?? "8");
+const MAX_QUEUED = Number(process.env.MAX_QUEUED ?? "20");
 const VOICE_NOTES_PER_HOUR = Number(process.env.VOICE_NOTES_PER_HOUR ?? "20");
 // The page sends photos shrunk to 1600 px JPEGs, a couple of megabytes for all three as data URLs.
 const TRYON_BODY_LIMIT = 12_000_000;

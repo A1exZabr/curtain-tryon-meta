@@ -22,6 +22,7 @@
 
 <p align="center">
   <a href="https://tryon.zabsoft.com"><b>Live demo</b></a> ·
+  <a href="https://www.youtube.com/watch?v=vdM__0Mxt1Y"><b>Video</b></a> ·
   <a href="#why-a-pipeline-and-not-one-prompt"><b>How it works</b></a> ·
   <a href="#results">Results</a> ·
   <a href="#run-it">Run it</a> ·
@@ -35,6 +36,7 @@ window, the view, the furniture and the framing stay as they were, and a picture
 > [!TIP]
 > Try it on your own window at [tryon.zabsoft.com](https://tryon.zabsoft.com). Send a photo of a room and a photo
 > of a fabric; the answer comes in one to two minutes, and the page lists every model call it took and what it cost.
+> The [2:47 demo video](https://www.youtube.com/watch?v=vdM__0Mxt1Y) walks through the engine and the page.
 
 <p align="center">
   <img src="docs/assets/tryon-velvet.jpg" alt="A room with two sash windows, before and after: sage green velvet curtains on metal holdbacks, with the plants, the desk and the view unchanged" width="100%">

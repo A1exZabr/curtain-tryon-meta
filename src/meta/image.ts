@@ -17,26 +17,32 @@ export async function editImage(
   size: string,
   costs: CostLog,
 ): Promise<Buffer> {
-  reserve(PRICES.museImage);
+  const release = reserve(PRICES.museImage);
   const started = Date.now();
-  const response = await postJson(
-    `${META_BASE_URL}/images/edits`,
-    { Authorization: `Bearer ${metaKey()}` },
-    {
-      model: MODELS.image,
-      prompt,
-      images: images.map((image_url) => ({ image_url })),
-      n: 1,
-      size,
-      response_format: "b64_json",
-      output_format: "png",
-    },
-    { timeoutMs: 240_000, attempts: 2 },
-  );
-  const body = (await response.json()) as { data?: { b64_json?: string; url?: string }[] };
-  const first = body.data?.[0];
-  costs.add("muse image edit", PRICES.museImage, Date.now() - started);
+  let first: { b64_json?: string; url?: string } | undefined;
+  let body: unknown;
+  try {
+    const response = await postJson(
+      `${META_BASE_URL}/images/edits`,
+      { Authorization: `Bearer ${metaKey()}` },
+      {
+        model: MODELS.image,
+        prompt,
+        images: images.map((image_url) => ({ image_url })),
+        n: 1,
+        size,
+        response_format: "b64_json",
+        output_format: "png",
+      },
+      { timeoutMs: 240_000, attempts: 2 },
+    );
+    body = await response.json();
+    first = (body as { data?: { b64_json?: string; url?: string }[] }).data?.[0];
+    costs.add("muse image edit", PRICES.museImage, Date.now() - started);
+  } finally {
+    release();
+  }
   if (first?.b64_json) return Buffer.from(first.b64_json, "base64");
-  if (first?.url) return Buffer.from(await (await fetch(first.url)).arrayBuffer());
+  if (first?.url) return Buffer.from(await (await fetch(first.url, { signal: AbortSignal.timeout(60_000) })).arrayBuffer());
   throw new Error(`Muse Image returned no image: ${JSON.stringify(body).slice(0, 300)}`);
 }

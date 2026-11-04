@@ -17,6 +17,9 @@ services:
       - ./gallery:/app/gallery:ro
     mem_limit: 1g
     cpus: 1.5
+    # Node needs no Linux capabilities to listen on 8080 as the node user, and nothing in it should gain any.
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
     networks: [apps]
 networks:
   apps:

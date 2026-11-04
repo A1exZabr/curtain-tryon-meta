@@ -3,6 +3,9 @@ import { basetenKey, BASETEN_BASE_URL, metaKey, META_BASE_URL, MODELS, type Chec
 import { PRICES, reserve, type CostLog } from "../budget.ts";
 import { postJson } from "./http.ts";
 
+const MAX_TOKENS = 6000;
+const WORST_INPUT_TOKENS = 20_000;
+
 interface ChatResponse {
   choices?: { message?: { content?: string | null } }[];
   usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -32,22 +35,28 @@ export async function askJson<T>(
 
   let lastError = "";
   for (let attempt = 1; attempt <= 2; attempt++) {
-    reserve(0.02);
+    const [inPrice, outPrice] = open
+      ? [PRICES.sparkOpenInputPerM, PRICES.sparkOpenOutputPerM]
+      : [PRICES.sparkInputPerM, PRICES.sparkOutputPerM];
+    // Worst case: a generous input for the photos and the prompt, and every output token.
+    const release = reserve((WORST_INPUT_TOKENS * inPrice + MAX_TOKENS * outPrice) / 1e6);
     const started = Date.now();
-    const response = await postJson(url, headers, {
-      model: open ? MODELS.sparkOpen : MODELS.spark,
-      messages: [{ role: "user", content }],
-      max_tokens: 6000,
-      reasoning_effort: "low",
-      temperature: 0,
-    });
-    const body = (await response.json()) as ChatResponse;
-    const inTok = body.usage?.prompt_tokens ?? 0;
-    const outTok = body.usage?.completion_tokens ?? 0;
-    const usd = open
-      ? (inTok * PRICES.sparkOpenInputPerM + outTok * PRICES.sparkOpenOutputPerM) / 1e6
-      : (inTok * PRICES.sparkInputPerM + outTok * PRICES.sparkOutputPerM) / 1e6;
-    costs.add(`${open ? "muse spark open" : "muse spark"} ${label}`, usd, Date.now() - started);
+    let body: ChatResponse;
+    try {
+      const response = await postJson(url, headers, {
+        model: open ? MODELS.sparkOpen : MODELS.spark,
+        messages: [{ role: "user", content }],
+        max_tokens: MAX_TOKENS,
+        reasoning_effort: "low",
+        temperature: 0,
+      });
+      body = (await response.json()) as ChatResponse;
+      const inTok = body.usage?.prompt_tokens ?? 0;
+      const outTok = body.usage?.completion_tokens ?? 0;
+      costs.add(`${open ? "muse spark open" : "muse spark"} ${label}`, (inTok * inPrice + outTok * outPrice) / 1e6, Date.now() - started);
+    } finally {
+      release();
+    }
     const text = body.choices?.[0]?.message?.content ?? "";
     const parsed = schema.safeParse(extractJson(text));
     if (parsed.success) return parsed.data;

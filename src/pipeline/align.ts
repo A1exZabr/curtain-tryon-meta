@@ -107,6 +107,8 @@ async function search(
           const c = cost(scale, dx, dy);
           if (c < best.cost) best = { scale, dx, dy, cost: c };
         }
+        // The search takes seconds of CPU; let the server answer other visitors between rows instead of after it.
+        await new Promise((resolve) => setImmediate(resolve));
       }
     }
   }

@@ -20,29 +20,34 @@ export async function segment(
   phrase: string,
   costs: CostLog,
 ): Promise<Segment[]> {
-  reserve(PRICES.samImage);
+  const release = reserve(PRICES.samImage);
   const started = Date.now();
-  const response = await postJson(
-    `${META_BASE_URL}/responses`,
-    { Authorization: `Bearer ${metaKey()}`, Accept: "text/event-stream" },
-    {
-      model: MODELS.sam,
-      input: [
-        {
-          type: "message",
-          role: "user",
-          content: [
-            { type: "input_text", text: phrase },
-            { type: "input_image", image_url: image.dataUrl },
-          ],
-        },
-      ],
-      stream: true,
-      metadata: { include_confidence: "true", mask_encoding: "lossless" },
-    },
-  );
-  const result = await parseImageStream(sseEvents<ResponsesEvent>(response)).finalResult;
-  costs.add(`sam "${phrase}"`, PRICES.samImage, Date.now() - started);
+  let result: Awaited<ReturnType<typeof parseImageStream>["finalResult"]>;
+  try {
+    const response = await postJson(
+      `${META_BASE_URL}/responses`,
+      { Authorization: `Bearer ${metaKey()}`, Accept: "text/event-stream" },
+      {
+        model: MODELS.sam,
+        input: [
+          {
+            type: "message",
+            role: "user",
+            content: [
+              { type: "input_text", text: phrase },
+              { type: "input_image", image_url: image.dataUrl },
+            ],
+          },
+        ],
+        stream: true,
+        metadata: { include_confidence: "true", mask_encoding: "lossless" },
+      },
+    );
+    result = await parseImageStream(sseEvents<ResponsesEvent>(response)).finalResult;
+    costs.add(`sam "${phrase}"`, PRICES.samImage, Date.now() - started);
+  } finally {
+    release();
+  }
   if (result.outcome.status !== "completed") {
     throw new Error(`SAM did not complete for "${phrase}": ${JSON.stringify(result.outcome)}`);
   }

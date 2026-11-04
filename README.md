@@ -67,8 +67,10 @@ The parts that are plain code, not models, are where most of the reliability com
   window really are darker), with the same offset for every pixel so folds and shadows stay.
 - **Retries with a reason**. A rejected picture's measurements and the judge's defects become sentences in the next
   prompt ("the generator changed the room: keep every object, the camera and the framing").
-- **Spend cap** (`src/budget.ts`). Each paid call reserves its worst-case cost first, and the day's total is kept on
-  disk, so the public demo stops itself instead of running up the bill.
+- **Spend cap** (`src/budget.ts`). Each paid call reserves its worst-case cost until it settles, so calls running side
+  by side can't overshoot together, and the day's total is kept on disk, so the public demo stops itself instead of
+  running up the bill. The demo server also books a visitor's try-on before it reads the upload, caps the queue,
+  prices a voice note by the bytes sent, and checks a photo's header before decoding it.
 
 Some things were tried and taken out because they made results worse, measured on the same rooms. Sending Muse
 Image a light map of the room as an extra picture: the runs that sent it changed a median 41% of the room in the raw
@@ -121,8 +123,9 @@ npm run eval                    # the evaluation set, writes eval/RESULTS.md
 its time and its cost.
 
 Settings are environment variables: `SPEND_CAP_USD_PER_DAY` (default 5), `CHECKER` (`spark-open` or `spark`),
-`WORK_LONG_SIDE` (default 1536), and for the demo `PORT`, `TRIES_PER_HOUR`, `MAX_RUNNING`. The demo refuses service
-in the territories listed in Meta's Model API geographic use policy (`BLOCKED_COUNTRIES`).
+`WORK_LONG_SIDE` (default 1536), and for the demo `PORT`, `TRIES_PER_HOUR`, `MAX_RUNNING`, `MAX_QUEUED`,
+`VOICE_NOTES_PER_HOUR`. The demo refuses service in the territories listed in Meta's Model API geographic use policy
+(`BLOCKED_COUNTRIES`), by the visitor's IP address.
 
 ## Layout
 

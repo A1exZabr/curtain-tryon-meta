@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { SPEND_CAP_USD_PER_DAY, SPEND_FILE } from "./config.ts";
 
@@ -31,26 +31,48 @@ function today(): string {
 }
 
 function load(): SpendState {
+  let text: string;
   try {
-    const state = JSON.parse(readFileSync(SPEND_FILE, "utf8")) as SpendState;
-    return state.day === today() ? state : { day: today(), usd: 0 };
+    text = readFileSync(SPEND_FILE, "utf8");
   } catch {
     return { day: today(), usd: 0 };
+  }
+  try {
+    const state = JSON.parse(text) as SpendState;
+    if (typeof state.usd !== "number" || !Number.isFinite(state.usd)) throw new Error("bad spend file");
+    return state.day === today() ? state : { day: today(), usd: 0 };
+  } catch {
+    // A file that is there but unreadable must not reset the day to zero: count the day as spent.
+    return { day: today(), usd: SPEND_CAP_USD_PER_DAY };
   }
 }
 
 function save(state: SpendState): void {
   mkdirSync(dirname(SPEND_FILE), { recursive: true });
-  writeFileSync(SPEND_FILE, JSON.stringify(state));
+  // Written next to it and renamed, so a crash mid-write never leaves half a file.
+  writeFileSync(`${SPEND_FILE}.tmp`, JSON.stringify(state));
+  renameSync(`${SPEND_FILE}.tmp`, SPEND_FILE);
 }
 
+/** Worst-case costs of the calls still in flight; they count against the cap until the call settles. */
+let pending = 0;
+
 /**
- * Called before every paid request with its worst-case cost. Throws once the day's total would pass the cap,
- * so a burst of demo traffic cannot run up the card. The spend is persisted, so restarts don't reset it.
+ * Called before every paid request with its worst-case cost. Throws once the day's total, with the calls still
+ * running, would pass the cap, so a burst of demo traffic cannot run up the card: calls that run side by side
+ * can't all pass a cap that only one of them fits under. Returns the function that frees the reservation, to be
+ * called once the call is over, paid or failed. The spend is persisted, so restarts don't reset it.
  */
-export function reserve(estimateUsd: number): void {
+export function reserve(estimateUsd: number): () => void {
   const state = load();
-  if (state.usd + estimateUsd > SPEND_CAP_USD_PER_DAY) throw new BudgetExceeded(state.usd, SPEND_CAP_USD_PER_DAY);
+  if (state.usd + pending + estimateUsd > SPEND_CAP_USD_PER_DAY) throw new BudgetExceeded(state.usd + pending, SPEND_CAP_USD_PER_DAY);
+  pending += estimateUsd;
+  let freed = false;
+  return () => {
+    if (freed) return;
+    freed = true;
+    pending -= estimateUsd;
+  };
 }
 
 export function record(usd: number): void {

@@ -10,8 +10,25 @@ export interface Photo {
   dataUrl: string;
 }
 
+/**
+ * Photos come from anyone on the internet: a small file can declare a huge picture and take the server's memory
+ * when decoded. 40 megapixels is more than any phone camera gives; sharp refuses anything bigger before decoding.
+ */
+export const MAX_INPUT_PIXELS = 40_000_000;
+export const PHOTO_FORMATS = new Set(["jpeg", "png", "webp"]);
+
+/** Reads only the header: whether this is a photo the pipeline takes, in a format and size it decodes safely. */
+export async function isPhoto(input: Buffer): Promise<boolean> {
+  try {
+    const meta = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
+    return PHOTO_FORMATS.has(meta.format ?? "") && (meta.width ?? 0) * (meta.height ?? 0) <= MAX_INPUT_PIXELS;
+  } catch {
+    return false;
+  }
+}
+
 export async function loadPhoto(input: Buffer, longSide = WORK_LONG_SIDE): Promise<Photo> {
-  const resized = sharp(input)
+  const resized = sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
     .rotate() // apply the EXIF orientation phones write
     .resize({ width: longSide, height: longSide, fit: "inside", withoutEnlargement: true })
     .removeAlpha()
@@ -31,7 +48,7 @@ export async function loadPhoto(input: Buffer, longSide = WORK_LONG_SIDE): Promi
 
 /** Scales an image (e.g. the generator's output) to exactly the given size, as raw RGB. */
 export async function toSize(input: Buffer, width: number, height: number): Promise<Buffer> {
-  return sharp(input).removeAlpha().resize(width, height, { fit: "fill" }).toColourspace("srgb").raw().toBuffer();
+  return sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).removeAlpha().resize(width, height, { fit: "fill" }).toColourspace("srgb").raw().toBuffer();
 }
 
 export async function rgbToJpeg(rgb: Buffer, width: number, height: number, quality = 92): Promise<Buffer> {

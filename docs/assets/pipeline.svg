@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="660" viewBox="0 0 1280 660" role="img" aria-label="How one try-on is made: read the scene, find the window, draw the curtains, measure, judge, and show only a picture that passed">
+  <title>How one try-on is made</title>
+  <defs>
+    <pattern id="p-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#E7EDF0" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="p-glow" cx="50%" cy="30%" r="55%">
+      <stop offset="0" stop-color="#F2C230" stop-opacity="0.13"/>
+      <stop offset="1" stop-color="#F2C230" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="p-fade" cx="50%" cy="45%" r="70%">
+      <stop offset="0.35" stop-color="#fff"/>
+      <stop offset="1" stop-color="#000"/>
+    </radialGradient>
+    <mask id="p-mask"><rect width="1280" height="660" fill="url(#p-fade)"/></mask>
+    <clipPath id="p-round"><rect width="1280" height="660" rx="20"/></clipPath>
+    <marker id="p-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#E7EDF0" fill-opacity="0.6"/></marker>
+    <marker id="p-head-tape" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#F2C230"/></marker>
+  </defs>
+  <g clip-path="url(#p-round)">
+    <rect width="1280" height="660" fill="#0D1820"/>
+    <rect width="1280" height="660" fill="url(#p-grid)" mask="url(#p-mask)"/>
+    <rect width="1280" height="660" fill="url(#p-glow)"/>
+    <text x="40" y="56" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" letter-spacing="3" fill="#E7EDF0" fill-opacity="0.55">HOW ONE TRY-ON IS MADE</text>
+    
+    <g>
+      <rect x="40" y="92" width="282" height="214" rx="14" fill="#14222C" stroke="#E7EDF0" stroke-opacity="0.14" stroke-width="1.2"/>
+      <text x="62" y="128" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6" fill="#F2C230">INPUT</text>
+      <text x="62" y="164" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="23" font-weight="600" fill="#E7EDF0">Your photos</text>
+      <text x="62" y="200" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">A photo of the room and</text><text x="62" y="224" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">one of the fabric. A wish</text><text x="62" y="248" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">by voice if you like,</text><text x="62" y="272" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">via Muse Voice Transcribe.</text>
+    </g>
+    
+    <g>
+      <rect x="346" y="92" width="282" height="214" rx="14" fill="#14222C" stroke="#E7EDF0" stroke-opacity="0.14" stroke-width="1.2"/>
+      <text x="368" y="128" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6" fill="#F2C230">MUSE SPARK OPEN</text>
+      <text x="368" y="164" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="23" font-weight="600" fill="#E7EDF0">1. Read the scene</text>
+      <text x="368" y="200" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">A room? A window? The</text><text x="368" y="224" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">fabric's colour and</text><text x="368" y="248" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">sheerness, the tulle, the</text><text x="368" y="272" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">objects that must stay.</text>
+    </g>
+    
+    <g>
+      <rect x="652" y="92" width="282" height="214" rx="14" fill="#14222C" stroke="#E7EDF0" stroke-opacity="0.14" stroke-width="1.2"/>
+      <text x="674" y="128" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6" fill="#F2C230">SAM 3.1</text>
+      <text x="674" y="164" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="23" font-weight="600" fill="#E7EDF0">2. Find the window</text>
+      <text x="674" y="200" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">Windows, old curtains,</text><text x="674" y="224" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">tulle and lamps as masks:</text><text x="674" y="248" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">where curtains may hang</text><text x="674" y="272" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">and what stays in front.</text>
+    </g>
+    
+    <g>
+      <rect x="958" y="92" width="282" height="214" rx="14" fill="#14222C" stroke="#E7EDF0" stroke-opacity="0.14" stroke-width="1.2"/>
+      <text x="980" y="128" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6" fill="#F2C230">MUSE IMAGE</text>
+      <text x="980" y="164" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="23" font-weight="600" fill="#E7EDF0">3. Draw the curtains</text>
+      <text x="980" y="200" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">The room with curtains of</text><text x="980" y="224" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">the fabric, told which</text><text x="980" y="248" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">objects must stay and</text><text x="980" y="272" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">what went wrong last time.</text>
+    </g>
+    
+    <g>
+      <rect x="958" y="400" width="282" height="214" rx="14" fill="#14222C" stroke="#E7EDF0" stroke-opacity="0.14" stroke-width="1.2"/>
+      <text x="980" y="436" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6" fill="#F2C230">PLAIN CODE + SAM 3.1</text>
+      <text x="980" y="472" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="23" font-weight="600" fill="#E7EDF0">4. Measure</text>
+      <text x="980" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">Align on the room. Are the</text><text x="980" y="532" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">photo's edges, the window</text><text x="980" y="556" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">frame and the tulle still</text><text x="980" y="580" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">there? Colour to swatch.</text>
+    </g>
+    
+    <g>
+      <rect x="652" y="400" width="282" height="214" rx="14" fill="#14222C" stroke="#E7EDF0" stroke-opacity="0.14" stroke-width="1.2"/>
+      <text x="674" y="436" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6" fill="#F2C230">MUSE SPARK OPEN × 3</text>
+      <text x="674" y="472" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="23" font-weight="600" fill="#E7EDF0">5. Judge</text>
+      <text x="674" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">Three votes: the right</text><text x="674" y="532" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">fabric, the room unchanged,</text><text x="674" y="556" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">realistic curtains. The</text><text x="674" y="580" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">majority decides.</text>
+    </g>
+    
+    <g>
+      <rect x="346" y="400" width="282" height="214" rx="14" fill="#14222C" stroke="#F2C230" stroke-opacity="0.9" stroke-width="2"/>
+      <text x="368" y="436" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6" fill="#F2C230">RESULT</text>
+      <text x="368" y="472" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="23" font-weight="600" fill="#E7EDF0">Only a pass is shown</text>
+      <text x="368" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">17 of 20 real rooms pass,</text><text x="368" y="532" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">about $0.11 a try-on.</text><text x="368" y="556" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">A picture that failed</text><text x="368" y="580" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#E7EDF0" fill-opacity="0.72">never reaches the client.</text>
+    </g>
+    <line x1="324" y1="199" x2="342" y2="199" stroke="#E7EDF0" stroke-opacity="0.45" stroke-width="2"  marker-end="url(#p-head)"/>
+    <line x1="630" y1="199" x2="648" y2="199" stroke="#E7EDF0" stroke-opacity="0.45" stroke-width="2"  marker-end="url(#p-head)"/>
+    <line x1="936" y1="199" x2="954" y2="199" stroke="#E7EDF0" stroke-opacity="0.45" stroke-width="2"  marker-end="url(#p-head)"/>
+    <line x1="1065.16" y1="308" x2="1065.16" y2="396" stroke="#E7EDF0" stroke-opacity="0.45" stroke-width="2"  marker-end="url(#p-head)"/>
+    <line x1="1132.84" y1="398" x2="1132.84" y2="310" stroke="#F2C230" stroke-opacity="0.85" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#p-head-tape)"/>
+    <line x1="956" y1="507" x2="938" y2="507" stroke="#E7EDF0" stroke-opacity="0.45" stroke-width="2"  marker-end="url(#p-head)"/>
+    <line x1="650" y1="507" x2="632" y2="507" stroke="#E7EDF0" stroke-opacity="0.45" stroke-width="2"  marker-end="url(#p-head)"/>
+    <line x1="877.6" y1="398" x2="976" y2="312" stroke="#F2C230" stroke-opacity="0.85" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#p-head-tape)"/>
+    <text x="44" y="440" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#F2C230">A failed check sends it</text>
+    <text x="44" y="464" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#F2C230">back to step 3 with the</text>
+    <text x="44" y="488" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#F2C230">reason, up to three tries.</text>
+    <line x1="44" y1="508" x2="160" y2="508" stroke="#F2C230" stroke-width="2" stroke-dasharray="6 6"/>
+  </g>
+</svg>

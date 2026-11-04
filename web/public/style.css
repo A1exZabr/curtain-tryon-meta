@@ -234,6 +234,7 @@ h2 { font-size: clamp(26px, 2.8vw, 34px); line-height: 1.1; margin-bottom: 12px;
 .costs td:nth-child(n+2), .costs th:nth-child(n+2) { text-align: right; white-space: nowrap; }
 .costs td:last-child, .costs th:last-child { padding-right: 0; }
 .costs tfoot td { font-weight: 600; border-bottom: 0; }
+.costs tfoot .note td { font-weight: 400; font-size: 14px; color: var(--muted); text-align: left; white-space: normal; padding-top: 0; }
 
 /* --- How it works ----------------------------------------------------------------------------------------- */
 .how { padding: clamp(40px, 6vw, 80px) var(--pad); }

@@ -363,11 +363,30 @@ function showResult(r) {
   const retry = r.attempts?.find((a) => a.fixes?.length);
   if (retry) facts.push(["Second try told Muse Image", retry.fixes.join(" ")]);
   $("#facts").innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join("");
-  $("#costs tbody").innerHTML = (r.costs ?? [])
-    .map((c) => `<tr><td>${escapeHtml(c.what)}</td><td>${(c.ms / 1000).toFixed(1)} s</td><td>$${c.usd.toFixed(4)}</td></tr>`)
+  const calls = r.costs ?? [];
+  $("#costs tbody").innerHTML = calls
+    .map((c) => `<tr><td>${escapeHtml(callName(c.what))}</td><td>${(c.ms / 1000).toFixed(1)} s</td><td>$${c.usd.toFixed(4)}</td></tr>`)
     .join("");
-  $("#costs tfoot").innerHTML = `<tr><td>Total</td><td>${(r.ms / 1000).toFixed(0)} s</td><td>$${r.totalUsd.toFixed(3)}</td></tr>`;
+  // The calls overlap, so their times add up to more than the try-on took; say so rather than leave the sum to puzzle.
+  const callSeconds = calls.reduce((sum, c) => sum + c.ms, 0) / 1000;
+  $("#costs tfoot").innerHTML =
+    `<tr><td>Total</td><td>${(r.ms / 1000).toFixed(0)} s</td><td>$${r.totalUsd.toFixed(3)}</td></tr>` +
+    `<tr class="note"><td colspan="3">Total time is from upload to answer. Calls run side by side, so the rows add up to more: ${callSeconds.toFixed(0)} s.</td></tr>`;
   box.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
+
+// The server names calls in lower case for its log; the table gives the models their own names.
+const MODEL_NAMES = [
+  ["sam", "SAM 3.1"],
+  ["muse spark open", "Muse Spark Open"],
+  ["muse spark", "Muse Spark"],
+  ["muse image", "Muse Image"],
+  ["muse voice transcribe", "Muse Voice Transcribe"],
+];
+
+function callName(what) {
+  const found = MODEL_NAMES.find(([short]) => what === short || what.startsWith(`${short} `));
+  return found ? found[1] + what.slice(found[0].length) : what;
 }
 
 function escapeHtml(s) {
